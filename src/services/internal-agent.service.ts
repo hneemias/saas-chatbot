@@ -3,16 +3,18 @@ import { env } from '../config/env.js';
 import { updateStatusTool } from '../tools/update-status.js';
 import { dailySummaryTool } from '../tools/daily-summary.js';
 import { checkAvailabilityTool } from '../tools/check-availability.js';
+import { searchKnowledgeBaseTool } from '../tools/search-knowledge-base.js';
 import { AgentTool } from '../tools/types.js';
 import { ToolContext } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { compileSystemPrompt } from '../utils/prompt-compiler.js';
 
-// O Agente Interno (Administrativo) possui ferramentas de gestão e resumos
+// O Agente Interno (Administrativo) possui ferramentas de gestão, resumos e base de conhecimento
 const internalTools: Record<string, AgentTool> = {
   update_client_status: updateStatusTool,
   get_daily_summary: dailySummaryTool,
   check_calendar: checkAvailabilityTool,
+  search_knowledge_base: searchKnowledgeBaseTool,
 };
 
 const internalDeclarations = Object.values(internalTools).map((t) => t.declaration);

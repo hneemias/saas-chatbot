@@ -48,6 +48,15 @@ export interface LeadControlRecord {
   updated_at?: string;
 }
 
+export interface KnowledgeBaseRecord {
+  id?: string;
+  tenant_id: string;
+  content: string;
+  metadata?: Record<string, any>;
+  embedding?: number[];
+  created_at?: string;
+}
+
 export interface MessageRecord {
   id?: string;
   tenant_id: string;

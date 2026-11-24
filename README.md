@@ -133,6 +133,7 @@ Todas as ferramentas operam de forma autônoma pelo Gemini Function Calling:
 | `notify_team` | Karol | Dúvida sobre processo em andamento ou consulta jurídica pontual | Envia notificação ao grupo sem pausar a IA |
 | `check_calendar` | Ambos | Consulta de disponibilidade para reuniões ou consultas | Busca slots livres no Google Calendar |
 | `schedule_event` | Karol | Confirmação de agendamento de consulta | Cria o compromisso no Google Calendar com Google Meet |
+| `search_knowledge_base` | Ambos | Consulta à base de conhecimento jurídica e regras do escritório (RAG) | Busca semântica vetorial na tabela `knowledge_base` (pgvector / Gemini) |
 | `get_daily_summary` | Atlas | Solicitação de relatório ou resumo de atendimentos | Agrupa todas as conversas do dia por cliente (exclui equipe) |
 | `update_client_status` | Atlas | Mudança manual de status ou reativação de cliente | Altera status com busca tolerante por nome ou telefone |
 
@@ -174,6 +175,7 @@ mcp n8n/
 │   │   ├── message.service.ts       # Persistência e formatação de histórico
 │   │   ├── team.service.ts          # Validação de equipe e comandos (!shhh / !volte)
 │   │   ├── tenant.service.ts        # Resolução e cache TTL de configurações de escritórios
+│   │   ├── rag.service.ts           # Motor de busca vetorial (RAG) com Google Embeddings
 │   │   ├── transcription.service.ts # Transcrição de áudio via Google Gemini
 │   │   └── tts.service.ts           # Normalização de texto e síntese de voz (Multivozes)
 │   ├── tools/                       # Implementação das ferramentas executáveis
