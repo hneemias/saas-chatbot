@@ -1,6 +1,8 @@
 export interface Tenant {
   id: string;
   name: string;
+  slug?: string;
+  openai_api_key?: string;
   evolution_api_key?: string;
   evolution_instance_name: string;
   subscription_status: string;
@@ -15,6 +17,7 @@ export interface TenantConfig {
   external_system_prompt?: string;
   internal_agent_name?: string;
   internal_system_prompt?: string;
+  classifier_rules?: Record<string, any>;
   calendar_config?: Record<string, any>;
   temperature?: number;
 }
@@ -27,8 +30,22 @@ export interface Client {
   status: 'active' | 'paused' | 'triagem_concluida' | 'converted' | string;
   previous_status?: string;
   followup_sent?: boolean;
+  metadata?: Record<string, any>;
   created_at: string;
   last_interaction_at?: string;
+}
+
+export interface LeadControlRecord {
+  id?: string;
+  tenant_id: string;
+  client_id?: string;
+  temperature?: string;
+  area?: string;
+  summary?: string;
+  next_step?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface MessageRecord {

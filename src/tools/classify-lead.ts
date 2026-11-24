@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { clientService } from '../services/client.service.js';
 import { evolutionApi } from '../integrations/evolution.js';
+import { supabase } from '../integrations/supabase.js';
 import { ToolContext } from '../types/index.js';
 import { AgentTool } from './types.js';
 import { env } from '../config/env.js';
@@ -35,6 +36,22 @@ export const classifyLeadTool: AgentTool = {
   ) => {
     // 1. Atualiza status no banco
     await clientService.setStatus(context.phone, context.tenantId, 'triagem_concluida');
+
+    // 1.1 Registra na tabela leads_control se houver clientId
+    if (context.clientId) {
+      try {
+        await supabase.from('leads_control').insert({
+          tenant_id: context.tenantId,
+          client_id: context.clientId,
+          temperature: args.temperature,
+          area: args.area,
+          summary: args.summary,
+          status: 'triagem_concluida',
+        });
+      } catch (err: any) {
+        logger.warn({ err: err.message }, 'Falha ao registrar lead em leads_control');
+      }
+    }
 
     // 2. Notifica grupo de advogados
     if (context.notificationGroupId) {
