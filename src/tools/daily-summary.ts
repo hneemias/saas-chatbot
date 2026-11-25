@@ -19,10 +19,20 @@ export const dailySummaryTool: AgentTool = {
     },
   },
   execute: async (args: { date?: string }, context: ToolContext) => {
+    if (context.isInternalTeam === false) {
+      return { success: false, error: 'Acesso restrito exclusivamente à equipe interna do escritório.' };
+    }
+
     try {
-      const targetDate = args.date || new Date().toISOString().split('T')[0];
-      const start = `${targetDate}T00:00:00.000Z`;
-      const end = `${targetDate}T23:59:59.999Z`;
+      const defaultBrDate = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+      }).format(new Date());
+      const targetDate = args.date && /^\d{4}-\d{2}-\d{2}$/.test(args.date.trim())
+        ? args.date.trim()
+        : defaultBrDate;
+      // Limites diários no fuso de Brasília (UTC-3)
+      const start = `${targetDate}T00:00:00.000-03:00`;
+      const end = `${targetDate}T23:59:59.999-03:00`;
 
       // 1. Obtém telefones dos membros da equipe para desconsiderar no resumo de clientes
       const { data: teamMembers } = await supabase

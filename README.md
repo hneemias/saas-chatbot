@@ -1,20 +1,21 @@
-# ⚖️ SaaS Advocacia Backend (Node.js + TypeScript)
+# 🤖 Plataforma SaaS Multitenant de Atendimento Inteligente via WhatsApp
 
 <div align="center">
 
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-22.x-43853D?style=for-the-badge&logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
-![Google Gemini](https://img.shields.io/badge/Gemini_2.5_Flash-8E75B2?style=for-the-badge&logo=google&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
-![Evolution API](https://img.shields.io/badge/Evolution_API-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16.1-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google_Gemini-Flash_%2B_Embeddings-8E75B2?style=for-the-badge&logo=google&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL_%2B_pgvector-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![Evolution API](https://img.shields.io/badge/Evolution_API-WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
 
 <br/>
 
-**Serviço corporativo de alta performance, projetado para substituir por completo os fluxos legados do n8n no atendimento jurídico automatizado via WhatsApp.**
+**Plataforma SaaS completa (Backend em Node.js + Painel Administrativo em Next.js 16) para atendimento comercial, triagem, dossiês de clientes e catálogo inteligente via WhatsApp.**
 
-*Inspirado na arquitetura modular de voz do `inovar_assistente_voz`.*
+*Projetada originalmente para Escritórios de Advocacia e expandida com arquitetura Multi-Segmento para Comércio, Informática e Assistência Técnica.*
 
 </div>
 
@@ -22,275 +23,245 @@
 
 ## 📑 Sumário
 
-- [Visão Geral & Motivação](#-visão-geral--motivação)
-- [Comparativo: Antigo n8n vs Novo Backend](#-comparativo-n8n-vs-novo-backend)
-- [Arquitetura & Fluxo de Mensagens](#-arquitetura--fluxo-de-mensagens)
-- [Os Dois Agentes de IA](#-os-dois-agentes-de-ia)
-  - [1. Karol (Atendimento Externo a Clientes)](#1-karol-atendimento-externo-a-clientes)
-  - [2. Atlas (Assistente Interno da Equipe / Voz TTS)](#2-atlas-assistente-interno-da-equipe--voz-tts)
-- [Catálogo de Ferramentas Nativas (Tool Calling)](#-catálogo-de-ferramentas-nativas-tool-calling)
-- [Background Jobs & Rotinas Automáticas (Cron)](#-background-jobs--rotinas-automáticas-cron)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [Modelo de Dados (Supabase / PostgreSQL)](#-modelo-de-dados-supabase--postgresql)
-- [Variáveis de Ambiente & Instalação](#-variáveis-de-ambiente--instalação)
-- [Guia de Execução & Deploy](#-guia-de-execução--deploy)
-- [Integração com Evolution API](#-integração-com-evolution-api)
+- [Visão Geral da Plataforma](#-visão-geral-da-plataforma)
+- [Principais Diferenciais de Engenharia](#-principais-diferenciais-de-engenharia)
+- [Arquitetura & Fluxo de Atendimento](#-arquitetura--fluxo-de-atendimento)
+- [Os Dois Agentes Configuráveis por Empresa](#-os-dois-agentes-configuráveis-por-empresa)
+- [Ferramentas Nativas (Function Calling)](#-ferramentas-nativas-function-calling)
+- [Painel Administrativo (`admin-panel/`)](#-painel-administrativo-admin-panel)
+- [Estrutura do Repositório](#-estrutura-do-repositório)
+- [Banco de Dados & Migrações SQL (`sql/`)](#-banco-de-dados--migrações-sql-sql)
+- [Configuração & Execução Local](#-configuração--execução-local)
+- [Testes Automatizados](#-testes-automatizados)
+- [Deploy em Produção](#-deploy-em-produção)
 
 ---
 
-## 🎯 Visão Geral & Motivação
+## 🎯 Visão Geral da Plataforma
 
-Workflows visuais em plataformas como n8n, quando submetidos a alto volume de mensagens instantâneas (WhatsApp), sofrem com:
-1. **Elevado consumo de memória:** 1.5 GB a 2 GB para instâncias medianas.
-2. **Latência acumulada:** Múltiplos nós encadeados somam 3 a 7 segundos por resposta.
-3. **Instabilidade de concorrência:** Nós de *Wait* e *Debounce* visuais causam condições de corrida e travamentos em horários de pico.
+O `saas-chatbot` é uma solução multitenant ponta a ponta composta por dois serviços integrados no mesmo repositório:
 
-Este backend foi reimplementado em **Node.js 22 + TypeScript estrito**, operando com consumo inferior a **90 MB de RAM**, execução assíncrona orientada a eventos, buffer atômico via Redis e orquestração direta com a API do Google Gemini.
+1. **Motor de Atendimento & API (`src/`)**: Servidor **Node.js 22 + Express + TypeScript** de baixíssimo consumo de memória (~90 MB RAM), conectado à **Evolution API**, **Google Gemini** (com failover automático entre modelos primário e contingência), **Supabase (`pgvector` + `pg_trgm` + `Storage`)**, **Redis** (debounce atômico com fallback automático em memória), **Google Calendar** e **Multivozes TTS**.
+2. **Painel Administrativo Comercial (`admin-panel/`)**: Aplicação web **Next.js 16 + React 19 + Tailwind CSS v4 + shadcn/ui** para gestão completa de múltiplos escritórios/empresas, conexão WhatsApp via QR Code, curadoria de conversas, dossiês individuais de clientes, base de conhecimento com simulador visual e gestão de catálogo/estoque com importação de planilhas.
 
 ---
 
-## ⚡ Comparativo: n8n vs Novo Backend
+## 🧠 Principais Diferenciais de Engenharia
 
-| Dimensão | Fluxos Anteriores (n8n) | Novo Backend (Node.js + TS) | Ganho Real |
-| :--- | :--- | :--- | :---: |
-| **Consumo de Memória** | ~1.500 MB a 2.000 MB | **~85 MB** | **-95% RAM** |
-| **Tempo Médio de Resposta** | 3.5 a 6.0 segundos | **0.8 a 1.6 segundos** | **~4x mais rápido** |
-| **Tolerância a Mensagens Picadas** | Nós *Wait* com falhas frequentes | **Buffer atômico no Redis (4s)** | Zero mensagens duplicadas |
-| **Orquestração de Tools** | Sub-workflows soltos e sem tipagem | **Function Calling nativo com Zod/Gemini** | Execução determinística |
-| **Roteamento Equipe / Admin** | Nós misturados com fluxo de lead | **Roteamento isolado por perfil e comando** | Separação limpa |
-| **Síntese de Voz (TTS)** | Nós HTTP com bugs de encoding base64 | **Normalização fonética + Multivozes TTS** | Respostas de áudio realistas |
-| **Handover Humano** | Desativação manual imperfeita | **Detecção automática de `fromMe: true`** | Pausa instantânea da IA |
-| **Agendamento no Calendário** | Nós inativos por falta de credenciais | **Google Calendar v3 oficial (`googleapis`)** | Pronto para OAuth2 |
+### 1. Contexto Multi-Turn Nativo & Memória Episódica de Longo Prazo
+- **Histórico Estruturado (`Content[]`)**: As mensagens do banco são convertidas em turnos reais `user` ↔ `model` da API do Gemini (`buildGeminiChatTurns`), mesclando bolhas consecutivas, sinalizando intervenções humanas (`[Atendente Humano]`) sem quebrar o papel da IA e preservando o prefixo estático do `systemInstruction` para máximo aproveitamento de **Implicit Prefix Caching**.
+- **Envelope `<session_context>`**: Variáveis voláteis da sessão (horário local `America/Sao_Paulo`, dados do cliente, status e memória) são injetadas apenas no rodapé do prompt, enquanto variáveis de identidade (`{{ agent_name }}`, `{{ external_agent_name }}`, `{{ internal_agent_name }}`, `{{ tenant_name }}`) parametrizam os prompts sem nomes engessados.
+- **Memória Episódica (`memory.service.ts`)**: Resumo executivo persistente em `clients.metadata.memory_summary`, atualizado de forma assíncrona e econômica a cada nova janela de interações e enriquecido automaticamente ao concluir uma triagem (`convert_lead`).
+
+### 2. Base de Conhecimento Dual-Scope Zero-Trust (RAG + Dossiê do Cliente)
+- **Dois Escopos na Mesma Estrutura Vetorial (`1536d` HNSW)**:
+  - **Institucional (`client_id IS NULL`)**: Regras de negócio, honorários/serviços, endereços, políticas e perguntas frequentes da empresa.
+  - **Dossiê Individual do Cliente (`client_id = UUID`)**: Andamentos processuais, ordens de serviço, contratos ou notas específicas daquele cliente.
+- **Segurança Zero-Trust no Banco (`match_knowledge_base`)**: Documentos de dossiê nascem restritos à equipe interna (`visible_to_client = false`) e só podem ser consultados pelo Assistente de Clientes se liberados explicitamente, sempre travados pelo `client_id` autenticado do WhatsApp em atendimento (nunca por argumento livre da IA).
+- **Simulador de Consulta com Destaque Visual**: No painel, o gestor testa qualquer pergunta na *Visão Cliente* ou *Visão Equipe*, visualiza a resposta simulada exata do WhatsApp e vê grifados em amarelo (`<mark>`) os trechos exatos dos documentos que fundamentaram a resposta.
+
+### 3. Catálogo Híbrido de Produtos & Fotos no WhatsApp (Multi-Segmento)
+- Ativável por empresa (`classifier_rules.enable_product_catalog`), permitindo atender tanto **Escritórios de Advocacia** quanto **Lojas de Informática, Comércio e Assistências Técnicas**.
+- **Busca Híbrida Ultrarrápida (`product.service.ts`)**: Combina filtro determinístico de estoque e teto de preço (`stock_quantity > 0`), índice trigrama (`pg_trgm`) com expansão de sinônimos em português e busca vetorial semântica (`match_products` 1536d).
+- **Importador Inteligente de Planilhas (`.xlsx` / `.csv`)**: Reconhece automaticamente colunas de ERPs brasileiros (`Código/SKU`, `Produto/Descrição`, `Preço`, `Estoque`, `Categoria`), converte moeda `R$ 1.299,90`, atualiza preços/saldos via *upsert* **sem sobrescrever fotos já cadastradas** e permite upload de fotos em lote vinculando arquivos pelo SKU (`SKU.jpg`).
+- **Envio Real de Fotos (`send_product_photo`)**: Envia a foto oficial do produto hospedada no Supabase Storage diretamente no WhatsApp do cliente com proteção anti-eco (`registerSentMediaEcho`) para não pausar a IA indevidamente.
+
+### 4. Normalização Canônica de Telefones Brasileiros & Anti-Eco
+- Utilitário dedicado (`src/utils/phone.ts`) que normaliza JIDs da Evolution API (removendo sufixos `:device` e unificando celulares brasileiros com ou sem o 9º dígito após o DDD), evitando cadastros duplicados e garantindo vínculo íntegro entre `clients`, `messages` e `team_members`.
+
+### 5. Alta Disponibilidade & Failover Automático de IA
+- **Failover Instantâneo de Modelo (`GEMINI_FALLBACK_MODEL`)**: Caso o modelo primário sofra picos temporários de demanda (`503` / `429` / timeout) na API do Google, os orquestradores alternam automaticamente para o modelo de contingência sem atrasar o atendimento.
+- **Debounce Resiliente**: Agrupa mensagens picadas em janelas de 4 segundos via Redis e assume automaticamente buffer em memória local caso o Redis não esteja disponível.
 
 ---
 
-## 🏛️ Arquitetura & Fluxo de Mensagens
+## 🏛️ Arquitetura & Fluxo de Atendimento
 
 ```mermaid
 flowchart TD
-    WA([📱 WhatsApp do Cliente/Admin]) -->|Webhook HTTP| EVO[Evolution API]
-    EVO -->|POST /webhook/evolution| SRV[Express Webhook Route]
-    
-    SRV -->|Verificação 1| HM{fromMe: true?}
-    HM -->|Sim| HO[Handover: Pausa IA do Cliente e Registra Log]
-    
-    HM -->|Não| AUD{É Áudio?}
-    AUD -->|Sim| TRN[Gemini Transcrição Audio-to-Text]
-    AUD -->|Não| TXT[Extração do Texto ou Placeholder Mídia]
-    
-    TRN --> TEAM{É Membro da Equipe?}
-    TXT --> TEAM
-    
-    TEAM -->|Sim| CMD{Comando !shhh / !volte?}
-    CMD -->|Sim| TGL[Alterna Modo Silêncio do Bot]
-    CMD -->|Não| DEB_A[Debounce Equipe]
-    DEB_A --> ATLAS[Agente Interno Atlas]
-    ATLAS -->|Se enviou áudio| TTS[Multivozes TTS]
-    TTS -->|Envia PTT| EVO
-    ATLAS -->|Se enviou texto| EVO
-    
-    TEAM -->|Não: Cliente| PAUSED{Cliente Pausado?}
-    PAUSED -->|Sim| LOG[Apenas Registra Mensagem no Banco]
-    PAUSED -->|Não| DEB_C[Debounce Redis 4s]
-    DEB_C --> KAROL[Agente Karol + Gemini Tools]
-    KAROL --> SPLIT[Divisão em Blocos 1500 chars]
+    WA([📱 WhatsApp Cliente / Equipe]) -->|Webhook HTTP| EVO[Evolution API]
+    EVO -->|POST /webhook/evolution| SRV[Backend Node.js + Express]
+
+    SRV -->|fromMe: true| ECHO{É Eco do Próprio Bot?}
+    ECHO -->|Sim| IGN[Ignora Eco com Segurança]
+    ECHO -->|Não| HO[Atendimento Humano Detectado: Pausa IA]
+
+    SRV -->|fromMe: false| AUD{Mensagem de Áudio?}
+    AUD -->|Sim| TRN[Transcrição de Áudio via Gemini]
+    AUD -->|Não| TXT[Extração de Texto / Mídia + Normalização de Telefone]
+
+    TRN --> ROLE{Remetente é da Equipe?}
+    TXT --> ROLE
+
+    ROLE -->|Sim| CMD{Comando !shhh / !volte?}
+    CMD -->|Sim| TGL[Alterna Silêncio do Copiloto]
+    CMD -->|Não| INT[Copiloto da Equipe + Tools Administrativas]
+    INT -->|Entrada foi áudio| TTS[Multivozes TTS -> Áudio PTT]
+    INT -->|Entrada foi texto| EVO
+    TTS --> EVO
+
+    ROLE -->|Não: Cliente| PAUSED{IA Pausada para o Cliente?}
+    PAUSED -->|Sim| SAVE[Registra Mensagem no Histórico]
+    PAUSED -->|Não| DEB[Debounce 4s Redis / Memória]
+    DEB --> EXT[Assistente de Clientes + Multi-Turn + RAG + Catálogo]
+    EXT --> MEM[Atualiza Memória Episódica em Background]
+    EXT --> SPLIT[Fatiamento Natural + Envio WhatsApp]
     SPLIT --> EVO
 ```
 
 ---
 
-## 🤖 Os Dois Agentes de IA
+## 🤖 Os Dois Agentes Configuráveis por Empresa
 
-### 1. Karol (Atendimento Externo a Clientes)
-* **Objetivo:** Recepção, triagem jurídica empática, coleta do nome, qualificação da urgência e conversão de leads.
-* **Comportamento:**
-  - Linguagem humanizada, acolhedora e ética.
-  - Não faz promessas de causas ganhas nem emite pareceres formais conclusivos.
-  - Executa as ferramentas de negócio conforme o cliente conversa (salvar nome, agendar consulta, notificar equipe).
-  - Respostas longas são automaticamente fatiadas em blocos de até 1.500 caracteres, respeitando pontuação e espaçamento.
+Cada empresa cadastrada define livremente o nome, a personalidade e as regras de seus dois agentes:
 
-### 2. Atlas (Assistente Interno da Equipe / Voz TTS)
-* **Objetivo:** Braço direito da equipe jurídica e advogados no WhatsApp.
-* **Comportamento:**
-  - Responde dúvidas sobre a esteira de atendimentos e status dos clientes.
-  - Gera resumos consolidados das últimas 24 horas por cliente.
-  - **Suporte a Voz Completo (TTS):** Se o advogado mandar um áudio perguntando *"Como foram os atendimentos de hoje?"*, o Atlas transcreve, consulta o banco, normaliza o texto para fala e responde diretamente com uma mensagem de voz via **Multivozes TTS**.
-  - **Comandos de Controle do Bot:**
-    - `!shhh`: Pausa o assistente para a equipe.
-    - `!volte` (ou qualquer outro comando): Reativa o assistente imediatamente.
+1. **Assistente de Clientes (Externo — ex.: *Karol*, *Lohanna*)**
+   - Recepciona clientes 24/7, realiza triagem consultiva, consulta documentos institucionais e o dossiê liberado do próprio cliente, verifica agenda ou estoque real de produtos, envia fotos de itens quando solicitado e aciona a equipe humana sempre que necessário.
+2. **Copiloto da Equipe (Interno — ex.: *Atlas*)**
+   - Reconhece automaticamente sócios, advogados, técnicos e gestores cadastrados na aba *Equipe*.
+   - Consulta dossiês completos (incluindo notas internas sigilosas), gera resumos diários de atendimento, altera status de clientes por comando natural e responde por **áudio (TTS)** quando acionado por mensagem de voz.
 
 ---
 
-## 🛠️ Catálogo de Ferramentas Nativas (Tool Calling)
+## 🛠️ Ferramentas Nativas (Function Calling)
 
-Todas as ferramentas operam de forma autônoma pelo Gemini Function Calling:
+| Ferramenta | Escopo | Finalidade |
+| :--- | :---: | :--- |
+| `save_client_name` | Cliente | Salva ou atualiza o nome do cliente assim que informado na conversa |
+| `convert_lead` | Cliente | Registra triagem qualificada, atualiza a memória do cliente e notifica o grupo da equipe |
+| `human_escalation` | Cliente | Pausa a IA imediatamente e alerta a equipe com resumo e link direto `wa.me/` |
+| `notify_team` | Cliente | Envia aviso operacional ao grupo da equipe sem interromper o atendimento automático |
+| `check_calendar` | Ambos | Consulta horários livres reais no Google Calendar respeitando expediente e almoço |
+| `schedule_event` | Cliente | Agenda compromissos no Google Calendar com geração opcional de link Google Meet |
+| `search_knowledge_base` | Ambos | Busca vetorial com isolamento multitenant e trava Zero-Trust por escopo (Cliente vs Equipe) |
+| `search_products` | Ambos* | Busca híbrida no catálogo de produtos com estoque disponível, preços e sinônimos |
+| `send_product_photo` | Cliente* | Envia foto real do produto via WhatsApp com legenda comercial automática |
+| `get_daily_summary` | Equipe | Consolida o relatório das conversas e atendimentos das últimas 24 horas |
+| `update_client_status` | Equipe | Pausa, reativa ou altera o estágio de um cliente por nome ou telefone |
 
-| Ferramenta | Agente | Gatilho / Finalidade | Efeito no Sistema |
-| :--- | :---: | :--- | :--- |
-| `save_client_name` | Karol | Cliente informa como gostaria de ser chamado | Atualiza coluna `name` em `clients` |
-| `convert_lead` | Karol | Triagem concluída (área, temperatura, resumo) | Altera status para `triagem_concluida` e notifica grupo de advogados |
-| `human_escalation` | Karol | Cliente irritado, caso complexo ou pedido expresso de humano | Altera status para `paused` e alerta a equipe com link `wa.me/` |
-| `notify_team` | Karol | Dúvida sobre processo em andamento ou consulta jurídica pontual | Envia notificação ao grupo sem pausar a IA |
-| `check_calendar` | Ambos | Consulta de disponibilidade para reuniões ou consultas | Busca slots livres no Google Calendar |
-| `schedule_event` | Karol | Confirmação de agendamento de consulta | Cria o compromisso no Google Calendar com Google Meet |
-| `search_knowledge_base` | Ambos | Consulta à base de conhecimento jurídica e regras do escritório (RAG) | Busca semântica vetorial na tabela `knowledge_base` (pgvector / Gemini) |
-| `get_daily_summary` | Atlas | Solicitação de relatório ou resumo de atendimentos | Agrupa todas as conversas do dia por cliente (exclui equipe) |
-| `update_client_status` | Atlas | Mudança manual de status ou reativação de cliente | Altera status com busca tolerante por nome ou telefone |
-
----
-
-## ⏰ Background Jobs & Rotinas Automáticas (Cron)
-
-O serviço inclui rotinas de segundo plano em Node.js (`src/services/cron.service.ts`) substituindo os workflows independentes de agendamento do n8n:
-
-1. **Daily Follow-up (10:00 da manhã):**
-   - Identifica clientes ativos sem interação há mais de 24 horas.
-   - Envia mensagem cordial: *"Olá! Notei que não concluímos nosso atendimento ontem. Ainda tem interesse em agendar ou ficou alguma dúvida?"*
-   - Marca `followup_sent = true` para evitar reenvios.
-
-2. **Auto-Reativação de Clientes (A cada 1 hora):**
-   - Localiza clientes com status `paused` inativos há mais de 12 horas.
-   - Reativa automaticamente para o status anterior ou `active`, garantindo que nenhum contato fique esquecido.
+*\*Ferramentas de catálogo habilitadas dinamicamente nas empresas com módulo de Catálogo de Produtos ativo.*
 
 ---
 
-## 📁 Estrutura do Projeto
+## 🖥️ Painel Administrativo (`admin-panel/`)
 
-```
-mcp n8n/
-├── src/
-│   ├── config/
-│   │   └── env.ts                   # Validação de schema de ambiente com Zod
-│   ├── integrations/
-│   │   ├── evolution.ts             # Cliente HTTP Evolution API (mensagens, áudio, base64)
-│   │   ├── google-calendar.ts       # Integração oficial Google Calendar v3 via OAuth2
-│   │   ├── redis.ts                 # Conexão ioredis de alta performance
-│   │   └── supabase.ts              # Cliente oficial Supabase (@supabase/supabase-js)
-│   ├── services/
-│   │   ├── agent.service.ts         # Orquestrador do Agente Karol (Gemini 2.5 Flash)
-│   │   ├── internal-agent.service.ts# Orquestrador do Agente Atlas (Admin/Equipe + Áudio)
-│   │   ├── client.service.ts        # Operações atômicas de clientes (getOrCreate, status)
-│   │   ├── cron.service.ts          # Background jobs: Follow-up 24h e Reativação 12h
-│   │   ├── debounce.service.ts      # Agrupamento inteligente de mensagens picadas (Redis)
-│   │   ├── message.service.ts       # Persistência e formatação de histórico
-│   │   ├── team.service.ts          # Validação de equipe e comandos (!shhh / !volte)
-│   │   ├── tenant.service.ts        # Resolução e cache TTL de configurações de escritórios
-│   │   ├── rag.service.ts           # Motor de busca vetorial (RAG) com Google Embeddings
-│   │   ├── transcription.service.ts # Transcrição de áudio via Google Gemini
-│   │   └── tts.service.ts           # Normalização de texto e síntese de voz (Multivozes)
-│   ├── tools/                       # Implementação das ferramentas executáveis
-│   │   ├── check-availability.ts    # check_calendar
-│   │   ├── classify-lead.ts         # convert_lead
-│   │   ├── daily-summary.ts         # get_daily_summary
-│   │   ├── human-escalation.ts      # human_escalation
-│   │   ├── notify-team.ts           # notify_team
-│   │   ├── save-client-name.ts      # save_client_name
-│   │   ├── schedule-event.ts        # schedule_event
-│   │   ├── update-status.ts         # update_client_status
-│   │   └── index.ts                 # Registro e catálogo de tools
-│   ├── routes/
-│   │   └── webhook.routes.ts        # Endpoint POST /webhook/evolution
-│   ├── types/
-│   │   └── index.ts                 # Contratos e tipos TypeScript
-│   ├── utils/
-│   │   ├── logger.ts                # Logger estruturado de alta performance (Pino)
-│   │   └── prompt-compiler.ts       # Compilador com suporte retroativo a tags do n8n
-│   ├── server.ts                    # Bootstrap do Express e middlewares
-│   └── main.ts                      # Entrada principal + Inicializador de Crons
-├── .env.example                     # Template de variáveis de ambiente
-├── package.json                     # Scripts e dependências
-├── tsconfig.json                    # Configuração TypeScript rigorosa (ES2022)
-└── README.md                        # Esta documentação
+Interface SaaS construída em **Next.js 16 (App Router)** com autenticação JWT HttpOnly (`jose` + `bcryptjs`) e comunicação segura via Server Actions:
+
+- **Visão Geral (`/dashboard`)**: Indicadores globais, saúde das conexões e feed curado (*Round-Robin*) de conversas recentes com *deep-link* direto para o chat do cliente.
+- **Gestão por Empresa (`/tenants/[id]`)**:
+  - **Resumo**: Métricas operacionais da unidade e últimas interações reais (excluindo equipe interna).
+  - **Clientes & Dossiês**: Histórico completo de chat, edição protegida de cadastro, visualização da **Memória do Cliente** e gerenciamento do **Dossiê Individual** com controle de visibilidade.
+  - **Catálogo & Estoque**: Cadastro de produtos, upload de fotos no Supabase Storage, importação em massa de planilhas `.xlsx`/`.csv` e vinculação automática de fotos em lote pelo SKU.
+  - **Base de Conhecimento**: Gestão de documentos institucionais com fatiamento automático e **Simulador de Consulta** com resposta simulada + grifo automático dos trechos utilizados.
+  - **Equipe**: Cadastro de membros autorizados a conversar com o Copiloto da Equipe e comandos rápidos (`!shhh` / `!volte`).
+  - **Agentes de IA**: Editor de prompts com variáveis dinâmicas, temperatura, regras de triagem e ativação do módulo de catálogo.
+  - **WhatsApp & Webhook**: Conexão via QR Code em tempo real, seleção do grupo de alertas e configuração do Webhook na Evolution API com 1 clique.
+  - **Agenda**: Expediente comercial, intervalo de almoço e credenciais OAuth2 do Google Calendar.
+
+---
+
+## 📁 Estrutura do Repositório
+
+```text
+saas-chatbot/
+├── admin-panel/                     # Painel Administrativo SaaS (Next.js 16 + React 19 + Tailwind v4)
+│   ├── src/
+│   │   ├── app/                     # Rotas App Router (/login, /dashboard, /tenants, /settings) + Server Actions
+│   │   ├── components/              # Módulos visuais (Catálogo, Base de Conhecimento, Clientes, Equipe, IA, UI)
+│   │   └── lib/                     # Clientes Supabase SSR/Service Role, JWT Auth, Evolution API e Backend Client
+│   ├── .env.example                 # Exemplo de variáveis de ambiente do painel
+│   └── package.json
+├── sql/                             # Migrações idempotentes para o SQL Editor do Supabase
+│   ├── migration_saas.sql           # Estrutura base multitenant (tenants, tenant_configs, clients, messages, team)
+│   ├── match_knowledge_base.sql     # Tabela knowledge_base + índices HNSW + RPC Zero-Trust Dual-Scope
+│   └── products_catalog.sql         # Tabela products + índices pg_trgm/HNSW + RPC match_products
+├── src/                             # Motor Backend de Atendimento (Node.js 22 + Express + TypeScript)
+│   ├── config/env.ts                # Validação de ambiente com Zod
+│   ├── integrations/                # Clientes Evolution API, Supabase, Redis (com fallback) e Google Calendar
+│   ├── routes/                      # Rotas /webhook/evolution, /api/knowledge e /api/products
+│   ├── services/                    # Orquestradores de IA, Memória Episódica, RAG, Produtos, Debounce, Crons, TTS
+│   ├── tools/                       # Declarações e executores de Function Calling do Gemini
+│   ├── types/                       # Contratos TypeScript compartilhados
+│   └── utils/                       # Compilador de prompts (<session_context>), normalizador de telefones e logger
+├── tests/                           # Suíte de testes automatizados (Vitest)
+├── AGENTS.md                        # Diretrizes de produto, UI/UX e padrões técnicos do repositório
+├── .env.example                     # Exemplo de variáveis de ambiente do backend
+└── package.json
 ```
 
 ---
 
-## 🗄️ Modelo de Dados (Supabase / PostgreSQL)
+## 🗄️ Banco de Dados & Migrações SQL (`sql/`)
 
-O backend opera com 5 tabelas principais:
+Execute os scripts abaixo no **SQL Editor** do Supabase (todos são idempotentes e seguros para bancos já existentes):
 
-* `tenants`: Cadastro dos escritórios (`id`, `name`, `evolution_instance_name`, `evolution_api_key`, `subscription_status`).
-* `tenant_configs`: Configurações de IA (`tenant_id`, `notification_group_id`, `external_agent_name`, `external_system_prompt`, `internal_agent_name`, `internal_system_prompt`, `calendar_config`, `temperature`).
-* `clients`: Leads e clientes atendidos (`id`, `tenant_id`, `phone`, `name`, `status`, `previous_status`, `followup_sent`, `last_interaction_at`).
-* `messages`: Histórico de mensagens (`id`, `tenant_id`, `client_id`, `phone`, `role`, `content`, `message_type`, `created_at`).
-* `team_members`: Advogados e gestores autorizados (`id`, `tenant_id`, `phone`, `name`, `role`, `status`).
+1. [`sql/migration_saas.sql`](sql/migration_saas.sql) — Cria/adapta `tenants`, `tenant_configs`, `clients`, `messages`, `team_members` e `leads_control`.
+2. [`sql/match_knowledge_base.sql`](sql/match_knowledge_base.sql) — Configura `pgvector` (`1536` dimensões), índices HNSW e a função `match_knowledge_base` para documentos institucionais + dossiês de clientes.
+3. [`sql/products_catalog.sql`](sql/products_catalog.sql) — Cria a tabela `products`, índices `pg_trgm` + `HNSW` e a função `match_products` para o catálogo híbrido.
+4. **Supabase Storage**: Crie um bucket público chamado `product-images` caso utilize envio de fotos de produtos no WhatsApp.
 
 ---
 
-## ⚙️ Variáveis de Ambiente & Instalação
+## ⚙️ Configuração & Execução Local
 
-Crie o arquivo `.env` na raiz do projeto:
+### Pré-requisitos
+- **Node.js 22+**
+- Projeto no **Supabase** (PostgreSQL + `pgvector`)
+- Instância na **Evolution API**
+- Chave de API do **Google AI Studio (Gemini)**
+- **Redis** *(opcional em desenvolvimento — o backend ativa fallback em memória automaticamente)*
 
-```env
-# Servidor
-PORT=3000
-NODE_ENV=production
-LOG_LEVEL=info
+### 1. Backend (`:3000`)
 
-# Evolution API
-EVOLUTION_API_URL=https://workflows.hneemias.cloud
-EVOLUTION_API_KEY=sua_master_key_da_evolution
-
-# Supabase
-SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
-
-# Redis (Buffer e Debounce)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# Google Gemini (Modelos e Transcrição)
-GEMINI_API_KEY=sua_chave_do_google_ai_studio
-GEMINI_MODEL=gemini-2.5-flash
-
-# Multivozes TTS (Síntese de Áudio para o Atlas)
-MULTIVOZES_API_URL=https://multivozes.com.br/api
-MULTIVOZES_API_KEY=sua_chave_multivozes
-```
-
-Instale as dependências:
 ```bash
+# Na raiz do repositório
+cp .env.example .env
+# Preencha suas chaves no arquivo .env (sem UTF-8 BOM)
+
 npm install
-```
-
----
-
-## 🚀 Guia de Execução & Deploy
-
-### Desenvolvimento Local:
-```bash
 npm run dev
 ```
 
-### Validação de Tipagem (Zero Erros):
+### 2. Painel Administrativo (`:3001`)
+
 ```bash
-npm run typecheck
+cd admin-panel
+cp .env.example .env.local
+# Preencha as chaves do Supabase, JWT_SECRET e BACKEND_API_URL=http://localhost:3000
+
+npm install
+npm run dev
 ```
 
-### Compilar e Rodar em Produção:
+Acesse o painel em `http://localhost:3001`.
+
+---
+
+## 🧪 Testes Automatizados
+
+O projeto conta com suíte automatizada em **Vitest** cobrindo compilação de prompts, histórico multi-turn, normalização de telefones, trava Zero-Trust de RAG, debounce, anti-eco da Evolution API e rotas HTTP:
+
 ```bash
+npm run typecheck
+npm test
+```
+
+---
+
+## 🚀 Deploy em Produção
+
+### Backend (Node.js / PM2)
+```bash
+npm run build
+pm2 start dist/main.js --name "saas-chatbot-backend" -i 1
+pm2 save
+```
+
+### Painel Administrativo (Next.js 16)
+```bash
+cd admin-panel
 npm run build
 npm start
 ```
 
-### Executar em Produção com PM2:
-```bash
-pm2 start dist/main.js --name "saas-advocacia-backend" -i 1
-pm2 save
-```
-
----
-
-## 🔗 Integração com Evolution API
-
-Na sua instância do WhatsApp na Evolution API:
-1. Abra as configurações de **Webhook**.
-2. Aponte a URL para:
-   ```
-   http://seu-dominio-ou-ip:3000/webhook/evolution
-   ```
-3. Ative os eventos:
-   - `MESSAGES_UPSERT` (ou `messages.upsert`)
-4. Salve a configuração. O sistema já passará a responder instantaneamente às mensagens recebidas.
+Na aba **WhatsApp** de cada empresa no painel, basta clicar em **Configurar Automaticamente** para registrar o endpoint `POST /webhook/evolution` (`MESSAGES_UPSERT`) diretamente na Evolution API.

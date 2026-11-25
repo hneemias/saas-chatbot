@@ -3,50 +3,71 @@ import { logger } from '../utils/logger.js';
 
 export class DebounceService {
   private activeTimers = new Map<string, NodeJS.Timeout>();
-  private DEBOUNCE_WAIT_MS = 4000; // 4 segundos de espera para agrupar mensagens picadas
+  private memoryBuffers = new Map<string, string[]>();
+  private debounceWaitMs: number;
+
+  constructor(waitMs = 4000) {
+    this.debounceWaitMs = waitMs;
+  }
 
   /**
-   * Acumula mensagens de um mesmo remetente no Redis e aguarda o término do debounce
+   * Acumula mensagens de um mesmo escopo (`tenantId:remoteJid`) no Redis
+   * (com fallback automático em memória se Redis estiver offline)
    */
   async bufferMessage(
-    remoteJid: string,
+    scopeKey: string,
     messageText: string,
     onComplete: (fullMessage: string) => Promise<void>
   ): Promise<void> {
-    const bufferKey = `buffer:${remoteJid}`;
+    const bufferKey = `buffer:${scopeKey}`;
+    let usedMemoryFallback = false;
 
-    // 1. Adiciona a nova mensagem à lista no Redis
-    await redis.rpush(bufferKey, messageText);
-    await redis.expire(bufferKey, 120); // Expira em 2 minutos caso ocorra falha
+    try {
+      await redis.rpush(bufferKey, messageText);
+      await redis.expire(bufferKey, 120);
+    } catch {
+      usedMemoryFallback = true;
+      const list = this.memoryBuffers.get(scopeKey) || [];
+      list.push(messageText);
+      this.memoryBuffers.set(scopeKey, list);
+    }
 
-    // 2. Limpa timer anterior para este usuário se houver
-    const existingTimer = this.activeTimers.get(remoteJid);
+    const existingTimer = this.activeTimers.get(scopeKey);
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
 
-    // 3. Define novo timer de debounce
     const timer = setTimeout(async () => {
-      this.activeTimers.delete(remoteJid);
+      this.activeTimers.delete(scopeKey);
 
       try {
-        // Busca todas as mensagens acumuladas no Redis
-        const messages = await redis.lrange(bufferKey, 0, -1);
-        await redis.del(bufferKey);
+        let messages: string[] = [];
+        if (!usedMemoryFallback) {
+          try {
+            messages = await redis.lrange(bufferKey, 0, -1);
+            await redis.del(bufferKey);
+          } catch {
+            messages = this.memoryBuffers.get(scopeKey) || [];
+            this.memoryBuffers.delete(scopeKey);
+          }
+        } else {
+          messages = this.memoryBuffers.get(scopeKey) || [];
+          this.memoryBuffers.delete(scopeKey);
+        }
 
         if (!messages || messages.length === 0) return;
 
         const fullMessage = messages.filter(Boolean).join('\n').trim();
         if (fullMessage) {
-          logger.info({ remoteJid, count: messages.length }, 'Debounce concluído, processando mensagem agrupada');
+          logger.info({ scopeKey, count: messages.length }, 'Debounce concluído, processando mensagem agrupada');
           await onComplete(fullMessage);
         }
       } catch (err: any) {
-        logger.error({ err: err.message, remoteJid }, 'Erro ao descarregar buffer de debounce');
+        logger.error({ err: err.message, scopeKey }, 'Erro ao descarregar buffer de debounce');
       }
-    }, this.DEBOUNCE_WAIT_MS);
+    }, this.debounceWaitMs);
 
-    this.activeTimers.set(remoteJid, timer);
+    this.activeTimers.set(scopeKey, timer);
   }
 }
 

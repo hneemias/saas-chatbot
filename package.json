@@ -9,7 +9,11 @@
     "start": "node dist/main.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "admin:install": "cd admin-panel && npm install",
+    "admin:dev": "cd admin-panel && npm run dev",
+    "admin:build": "cd admin-panel && npm run build"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",

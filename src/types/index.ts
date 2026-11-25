@@ -51,10 +51,32 @@ export interface LeadControlRecord {
 export interface KnowledgeBaseRecord {
   id?: string;
   tenant_id: string;
+  client_id?: string | null;
+  doc_title?: string | null;
+  visible_to_client?: boolean;
   content: string;
   metadata?: Record<string, any>;
   embedding?: number[];
   created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductRecord {
+  id?: string;
+  tenant_id: string;
+  sku: string;
+  name: string;
+  category?: string | null;
+  description?: string | null;
+  price: number;
+  stock_quantity: number;
+  image_urls?: string[];
+  active?: boolean;
+  search_text?: string;
+  embedding?: number[] | null;
+  metadata?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface MessageRecord {
@@ -99,9 +121,11 @@ export interface EvolutionWebhookPayload {
 export interface ToolContext {
   tenantId: string;
   instanceName: string;
+  evolutionApiKey?: string;
   notificationGroupId?: string;
   phone: string;
   clientId?: string;
   clientName?: string;
   historyFormatted?: string;
+  isInternalTeam?: boolean;
 }

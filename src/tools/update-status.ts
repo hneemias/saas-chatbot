@@ -1,5 +1,6 @@
 import { SchemaType } from '@google/generative-ai';
 import { supabase } from '../integrations/supabase.js';
+import { clientService } from '../services/client.service.js';
 import { ToolContext } from '../types/index.js';
 import { AgentTool } from './types.js';
 
@@ -23,11 +24,18 @@ export const updateStatusTool: AgentTool = {
     },
   },
   execute: async (args: { name_query: string; status: string }, context: ToolContext) => {
-    const sanitized = args.name_query.replace(/'/g, "''");
+    if (context.isInternalTeam === false) {
+      return { success: false, message: 'Operação permitida apenas para membros da equipe.' };
+    }
+
+    const sanitized = (args.name_query || '').trim().replace(/'/g, "''");
+    if (!sanitized) {
+      return { success: false, message: 'Informe o nome do cliente.' };
+    }
 
     const { data: clients, error } = await supabase
       .from('clients')
-      .select('id, name')
+      .select('id, name, phone')
       .eq('tenant_id', context.tenantId)
       .ilike('name', `%${sanitized}%`)
       .limit(5);
@@ -45,11 +53,7 @@ export const updateStatusTool: AgentTool = {
     }
 
     const target = clients[0];
-    await supabase
-      .from('clients')
-      .update({ status: args.status })
-      .eq('id', target.id)
-      .eq('tenant_id', context.tenantId);
+    await clientService.setStatus(target.phone, context.tenantId, args.status);
 
     return {
       success: true,

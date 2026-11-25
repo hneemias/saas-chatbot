@@ -8,7 +8,7 @@ import { logger } from '../utils/logger.js';
 export const humanEscalationTool: AgentTool = {
   declaration: {
     name: 'human_escalation',
-    description: 'Pausa a IA e alerta a equipe de advogados para intervir no atendimento humano. Use se o cliente estiver irritado, pedir urgência ou solicitar expressamente um humano.',
+    description: 'Pausa a IA e alerta a equipe interna para assumir o atendimento humano. Use se o cliente estiver irritado, pedir urgência ou solicitar expressamente falar com um atendente.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -26,7 +26,7 @@ export const humanEscalationTool: AgentTool = {
 
     // 2. Alerta o grupo da equipe via WhatsApp se houver notification_group_id
     if (context.notificationGroupId) {
-      const cleanPhone = context.phone.replace('@s.whatsapp.net', '');
+      const cleanPhone = context.phone.replace(/@(s\.whatsapp\.net|lid)$/i, '');
       const clientLabel = context.clientName || cleanPhone;
       const alertMsg = `🚨 *ALERTA DE ATENDIMENTO HUMANO*\n\n` +
         `👤 *Cliente:* ${clientLabel}\n` +
@@ -39,6 +39,7 @@ export const humanEscalationTool: AgentTool = {
           instanceName: context.instanceName,
           remoteJid: context.notificationGroupId,
           text: alertMsg,
+          apiKey: context.evolutionApiKey,
         });
       } catch (err: any) {
         logger.error({ err: err.message }, 'Falha ao enviar alerta de escalonamento para o grupo');

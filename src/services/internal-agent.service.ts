@@ -3,18 +3,20 @@ import { env } from '../config/env.js';
 import { updateStatusTool } from '../tools/update-status.js';
 import { dailySummaryTool } from '../tools/daily-summary.js';
 import { checkAvailabilityTool } from '../tools/check-availability.js';
-import { searchKnowledgeBaseTool } from '../tools/search-knowledge-base.js';
+import { internalSearchKnowledgeBaseTool } from '../tools/search-knowledge-base.js';
+import { internalSearchProductsTool } from '../tools/products-tools.js';
 import { AgentTool } from '../tools/types.js';
-import { ToolContext } from '../types/index.js';
+import { MessageRecord, ToolContext } from '../types/index.js';
+import { messageService } from './message.service.js';
 import { logger } from '../utils/logger.js';
 import { compileSystemPrompt } from '../utils/prompt-compiler.js';
 
-// O Agente Interno (Administrativo) possui ferramentas de gestão, resumos e base de conhecimento
+// O Agente Interno (Administrativo) possui ferramentas de gestão, resumos e base de conhecimento completa
 const internalTools: Record<string, AgentTool> = {
   update_client_status: updateStatusTool,
   get_daily_summary: dailySummaryTool,
   check_calendar: checkAvailabilityTool,
-  search_knowledge_base: searchKnowledgeBaseTool,
+  search_knowledge_base: internalSearchKnowledgeBaseTool,
 };
 
 const internalDeclarations = Object.values(internalTools).map((t) => t.declaration);
@@ -29,91 +31,151 @@ export class InternalAgentService {
   async runInternalAssistant(options: {
     systemPrompt: string;
     userMessage: string;
-    historyFormatted: string;
+    historyMessages?: MessageRecord[];
+    historyFormatted?: string;
     context: ToolContext;
     adminName: string;
     adminRole: string;
+    tenantName?: string;
+    agentName?: string;
+    externalAgentName?: string;
+    enableCatalogTools?: boolean;
   }): Promise<string> {
-    const { systemPrompt, userMessage, historyFormatted, context, adminName, adminRole } = options;
+    const {
+      systemPrompt,
+      userMessage,
+      historyMessages = [],
+      historyFormatted,
+      context,
+      adminName,
+      adminRole,
+      tenantName,
+      agentName = 'Atlas',
+      externalAgentName = 'Karol',
+      enableCatalogTools = false,
+    } = options;
 
-    // Compila o prompt interno com suporte a tags n8n e template
+    // Compila o prompt interno com identidade estática no topo + `<session_context>` no final
     const compiledPrompt = compileSystemPrompt(
-      systemPrompt || 'Você é um assistente interno de apoio à equipe jurídica.',
+      systemPrompt || 'Você é {{ agent_name }}, assistente interno de apoio à equipe de {{ tenant_name }}.',
       {
+        mode: 'internal',
+        tenantName,
         adminName,
         adminRole,
         historyFormatted,
-        agentName: 'Atlas',
+        agentName,
+        internalAgentName: agentName,
+        externalAgentName,
         phone: context.phone,
+        nativeMultiTurnHistory: true,
+        appendSessionContext: true,
       }
     );
 
-    const model = this.genAI.getGenerativeModel({
-      model: env.GEMINI_MODEL,
-      systemInstruction: compiledPrompt,
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 1000,
-      },
-      tools: [{ functionDeclarations: internalDeclarations }],
-    });
+    const activeInternalTools: Record<string, AgentTool> = enableCatalogTools
+      ? { ...internalTools, search_products: internalSearchProductsTool }
+      : internalTools;
 
-    const chat = model.startChat({
-      history: [
+    const activeDeclarations = enableCatalogTools
+      ? [...internalDeclarations, internalSearchProductsTool.declaration]
+      : internalDeclarations;
+
+    const { history, effectiveUserMessage } = messageService.buildGeminiChatTurns(
+      historyMessages,
+      userMessage,
+      'internal'
+    );
+
+    const candidateModels = Array.from(
+      new Set([env.GEMINI_MODEL, env.GEMINI_FALLBACK_MODEL].filter(Boolean))
+    );
+
+    let lastError: any = null;
+
+    for (const modelName of candidateModels) {
+      const model = this.genAI.getGenerativeModel(
         {
-          role: 'user',
-          parts: [{ text: `[HISTÓRICO RECENTE COM A EQUIPE]\n${historyFormatted || 'Nenhuma mensagem recente.'}` }],
+          model: modelName,
+          systemInstruction: compiledPrompt,
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1000,
+          },
+          tools: [{ functionDeclarations: activeDeclarations }],
         },
-        {
-          role: 'model',
-          parts: [{ text: `Entendido. Olá ${adminName}! Como posso apoiar você e o escritório hoje?` }],
-        },
-      ],
-    });
+        { timeout: 20000 }
+      );
 
-    try {
-      let result = await chat.sendMessage(userMessage);
-      let response = result.response;
+      const chat = model.startChat({ history });
 
-      let iterations = 0;
-      const MAX_ITERATIONS = 5;
+      try {
+        let result = await chat.sendMessage(effectiveUserMessage);
+        let response = result.response;
 
-      while (response.functionCalls() && response.functionCalls()!.length > 0 && iterations < MAX_ITERATIONS) {
-        iterations++;
-        const functionCalls = response.functionCalls()!;
-        const call = functionCalls[0];
+        let iterations = 0;
+        const MAX_ITERATIONS = 5;
 
-        logger.info({ tool: call.name, args: call.args, admin: adminName }, 'Agente Interno executando ferramenta');
+        while (response.functionCalls() && response.functionCalls()!.length > 0 && iterations < MAX_ITERATIONS) {
+          iterations++;
+          const functionCalls = response.functionCalls()!;
 
-        const tool = internalTools[call.name];
-        let toolResult = { error: 'Ferramenta administrativa não encontrada' };
+          const functionResponses = await Promise.all(
+            functionCalls.map(async (call) => {
+              logger.info({ tool: call.name, args: call.args, admin: adminName }, 'Agente Interno executando ferramenta');
 
-        if (tool) {
-          try {
-            toolResult = await tool.execute(call.args, context);
-          } catch (err: any) {
-            logger.error({ err: err.message, tool: call.name }, 'Erro ao executar ferramenta interna');
-            toolResult = { error: err.message };
-          }
+              const tool = activeInternalTools[call.name];
+              let toolResult: Record<string, any> = { error: 'Ferramenta administrativa não encontrada' };
+
+              if (tool) {
+                try {
+                  toolResult = await tool.execute(call.args, context);
+                } catch (err: any) {
+                  logger.error({ err: err.message, tool: call.name }, 'Erro ao executar ferramenta interna');
+                  toolResult = { error: err.message };
+                }
+              }
+
+              return {
+                functionResponse: {
+                  name: call.name,
+                  response: toolResult,
+                },
+              };
+            })
+          );
+
+          result = await chat.sendMessage(functionResponses);
+          response = result.response;
         }
 
-        result = await chat.sendMessage([
-          {
-            functionResponse: {
-              name: call.name,
-              response: toolResult,
-            },
-          },
-        ]);
+        return (response.text() || '').trim();
+      } catch (err: any) {
+        lastError = err;
+        const msg = String(err?.message || '');
+        const isTransientOverload =
+          msg.includes('503') ||
+          msg.includes('429') ||
+          msg.includes('504') ||
+          msg.toLowerCase().includes('abort') ||
+          msg.toLowerCase().includes('timeout') ||
+          msg.toLowerCase().includes('high demand') ||
+          msg.toLowerCase().includes('overloaded');
 
-        response = result.response;
+        if (isTransientOverload && modelName !== candidateModels[candidateModels.length - 1]) {
+          logger.warn(
+            { failedModel: modelName, fallbackModel: env.GEMINI_FALLBACK_MODEL, admin: adminName, err: msg },
+            'Modelo do Agente Interno com pico de demanda/timeout; alternando para modelo de contingência'
+          );
+          continue;
+        }
+
+        logger.error({ err: msg, model: modelName, admin: adminName }, 'Falha na resposta do Agente Interno');
+        throw err;
       }
-
-      return (response.text() || '').trim();
-    } catch (err: any) {
-      logger.error({ err: err.message, admin: adminName }, 'Falha na resposta do Agente Interno');
-      throw err;
     }
+
+    throw lastError;
   }
 }
 

@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { supabase } from '../integrations/supabase.js';
 import { evolutionApi } from '../integrations/evolution.js';
+import { messageService } from './message.service.js';
 import { logger } from '../utils/logger.js';
 
 export class CronService {
@@ -13,7 +14,6 @@ export class CronService {
     try {
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
 
-      // Busca clientes pausados há mais de 12 horas pertencentes a inquilinos ativos
       const { data: clients, error } = await supabase
         .from('clients')
         .select('id, phone, tenant_id, previous_status, tenants!inner(subscription_status)')
@@ -32,11 +32,16 @@ export class CronService {
       }
 
       for (const client of clients) {
-        const newStatus = client.previous_status || 'active';
+        const newStatus =
+          client.previous_status && client.previous_status !== 'paused'
+            ? client.previous_status
+            : 'active';
+
         await supabase
           .from('clients')
           .update({ status: newStatus })
-          .eq('id', client.id);
+          .eq('id', client.id)
+          .eq('tenant_id', client.tenant_id);
 
         logger.info({ clientId: client.id, phone: client.phone, newStatus }, 'Cliente reativado automaticamente');
       }
@@ -54,7 +59,6 @@ export class CronService {
     try {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-      // Busca até 10 clientes para não sobrecarregar disparos
       const { data: clients, error } = await supabase
         .from('clients')
         .select(`
@@ -89,7 +93,8 @@ export class CronService {
         const instanceName = tenantData.evolution_instance_name;
         const apiKey = tenantData.evolution_api_key;
 
-        const followupMsg = 'Olá! Notei que não concluímos nosso atendimento ontem. Ainda tem interesse em agendar ou ficou alguma dúvida? Estou à disposição!';
+        const followupMsg =
+          'Olá! Notei que não concluímos nosso atendimento ontem. Ainda tem interesse em agendar ou ficou alguma dúvida? Estou à disposição!';
 
         try {
           await evolutionApi.sendTextMessage({
@@ -99,11 +104,21 @@ export class CronService {
             apiKey,
           });
 
-          // Marca que o follow-up foi enviado
+          // Registra no histórico para que a Karol saiba do contexto caso o cliente responda
+          await messageService.logMessage({
+            tenant_id: client.tenant_id,
+            client_id: client.id,
+            phone: client.phone,
+            role: 'assistant',
+            content: followupMsg,
+            message_type: 'text',
+          });
+
           await supabase
             .from('clients')
             .update({ followup_sent: true })
-            .eq('id', client.id);
+            .eq('id', client.id)
+            .eq('tenant_id', client.tenant_id);
 
           logger.info({ clientId: client.id, phone: client.phone }, 'Follow-up diário enviado');
         } catch (err: any) {
@@ -116,24 +131,30 @@ export class CronService {
   }
 
   /**
-   * Inicializa agendamentos de background
+   * Inicializa agendamentos de background no fuso de Brasília
    */
   init(): void {
-    // 1. Reativação automática: roda no minuto 0 de cada hora
-    cron.schedule('0 * * * *', () => {
-      this.runAutoReactivation().catch((err) =>
-        logger.error({ err: err.message }, 'Falha no cron de reativação')
-      );
-    });
+    cron.schedule(
+      '0 * * * *',
+      () => {
+        this.runAutoReactivation().catch((err) =>
+          logger.error({ err: err.message }, 'Falha no cron de reativação')
+        );
+      },
+      { timezone: 'America/Sao_Paulo' }
+    );
 
-    // 2. Daily Follow-up: roda todos os dias às 10:00 da manhã (horário do servidor)
-    cron.schedule('0 10 * * *', () => {
-      this.runDailyFollowup().catch((err) =>
-        logger.error({ err: err.message }, 'Falha no cron de follow-up')
-      );
-    });
+    cron.schedule(
+      '0 10 * * *',
+      () => {
+        this.runDailyFollowup().catch((err) =>
+          logger.error({ err: err.message }, 'Falha no cron de follow-up')
+        );
+      },
+      { timezone: 'America/Sao_Paulo' }
+    );
 
-    logger.info('Rotinas automáticas de background (Follow-up e Reativação) inicializadas');
+    logger.info('Rotinas automáticas de background (Follow-up 10h BRT e Reativação 1h) inicializadas');
   }
 }
 

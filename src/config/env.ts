@@ -24,7 +24,13 @@ const envSchema = z.object({
 
   // Gemini AI
   GEMINI_API_KEY: z.string().min(1).default('sua_gemini_key'),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
+  GEMINI_FALLBACK_MODEL: z.string().default('gemini-3.5-flash'),
+  GEMINI_EMBEDDING_MODEL: z.string().default('gemini-embedding-001'),
+  GEMINI_EMBEDDING_DIMENSIONS: z.string().default('1536').transform((v) => parseInt(v, 10)),
+
+  // Admin Panel API Auth (opcional)
+  ADMIN_API_KEY: z.string().optional(),
 
   // Multivozes (opcional)
   MULTIVOZES_API_URL: z.string().optional(),

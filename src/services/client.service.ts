@@ -1,39 +1,55 @@
 import { supabase } from '../integrations/supabase.js';
 import { Client } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { getEquivalentPhoneJids, normalizeWhatsAppJid } from '../utils/phone.js';
 
 export class ClientService {
-  async getOrCreate(phone: string, tenantId: string, initialName = 'Desconhecido'): Promise<Client> {
+  async getOrCreate(rawPhone: string, tenantId: string, initialName = 'Desconhecido'): Promise<Client> {
+    const phone = normalizeWhatsAppJid(rawPhone);
+    const jidVariants = getEquivalentPhoneJids(phone);
+
     try {
-      // 1. Tenta buscar cliente existente
-      const { data: existing, error: sErr } = await supabase
+      const { data: matches } = await supabase
         .from('clients')
         .select('*')
-        .eq('phone', phone)
         .eq('tenant_id', tenantId)
-        .maybeSingle();
+        .in('phone', jidVariants)
+        .order('created_at', { ascending: true });
+
+      const existing = matches && matches.length > 0 ? matches[0] : null;
 
       if (existing) {
-        // Atualiza last_interaction_at
+        const nowIso = new Date().toISOString();
+        const updates: Record<string, any> = {
+          last_interaction_at: nowIso,
+          followup_sent: false,
+        };
+
+        // Alinha o JID gravado com o JID real entregue pelo WhatsApp caso estivesse com variação de 9º dígito
+        if (existing.phone !== phone && !matches!.some((m) => m.phone === phone)) {
+          updates.phone = phone;
+        }
+
         await supabase
           .from('clients')
-          .update({
-            last_interaction_at: new Date().toISOString(),
-            followup_sent: false,
-          })
-          .eq('id', existing.id);
+          .update(updates)
+          .eq('id', existing.id)
+          .eq('tenant_id', tenantId);
 
-        return existing as Client;
+        return {
+          ...(existing as Client),
+          ...updates,
+        };
       }
 
-      // 2. Se não existir, cria o novo cliente de forma atômica
+      const nowIso = new Date().toISOString();
       const newClientData = {
         phone,
         tenant_id: tenantId,
         name: initialName,
         status: 'active',
-        created_at: new Date().toISOString(),
-        last_interaction_at: new Date().toISOString(),
+        created_at: nowIso,
+        last_interaction_at: nowIso,
         followup_sent: false,
       };
 
@@ -43,9 +59,23 @@ export class ClientService {
         .select('*')
         .single();
 
-      if (iErr || !created) {
-        logger.error({ error: iErr?.message, phone, tenantId }, 'Falha ao criar novo cliente no Supabase');
-        throw new Error(`Erro ao criar cliente: ${iErr?.message}`);
+      if (iErr) {
+        // Proteção contra condição de corrida (duas mensagens simultâneas do mesmo número inédito)
+        if (iErr.code === '23505') {
+          const { data: retryExisting } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .in('phone', jidVariants)
+            .maybeSingle();
+
+          if (retryExisting) {
+            return retryExisting as Client;
+          }
+        }
+
+        logger.error({ error: iErr.message, phone, tenantId }, 'Falha ao criar novo cliente no Supabase');
+        throw new Error(`Erro ao criar cliente: ${iErr.message}`);
       }
 
       logger.info({ clientId: created.id, phone, tenantId }, 'Novo cliente criado com sucesso');
@@ -56,29 +86,54 @@ export class ClientService {
     }
   }
 
-  async updateName(phone: string, tenantId: string, name: string): Promise<boolean> {
+  async updateName(rawPhone: string, tenantId: string, name: string): Promise<boolean> {
+    const jidVariants = getEquivalentPhoneJids(rawPhone);
     const { error } = await supabase
       .from('clients')
-      .update({ name })
-      .eq('phone', phone)
+      .update({ name: name.trim() })
+      .in('phone', jidVariants)
       .eq('tenant_id', tenantId);
 
     if (error) {
-      logger.error({ error: error.message, phone, name }, 'Falha ao atualizar nome do cliente');
+      logger.error({ error: error.message, phone: rawPhone, name }, 'Falha ao atualizar nome do cliente');
       return false;
     }
     return true;
   }
 
-  async setStatus(phone: string, tenantId: string, status: string): Promise<boolean> {
+  /**
+   * Atualiza o status do cliente preservando `previous_status` quando entra em `paused`,
+   * sem sobrescrever `previous_status` caso o cliente já esteja pausado.
+   */
+  async setStatus(rawPhone: string, tenantId: string, status: string): Promise<boolean> {
+    const jidVariants = getEquivalentPhoneJids(rawPhone);
+    const updatePayload: Record<string, any> = {
+      status,
+      last_interaction_at: new Date().toISOString(),
+    };
+
+    if (status === 'paused') {
+      const { data: current } = await supabase
+        .from('clients')
+        .select('status')
+        .in('phone', jidVariants)
+        .eq('tenant_id', tenantId)
+        .limit(1)
+        .maybeSingle();
+
+      if (current?.status && current.status !== 'paused') {
+        updatePayload.previous_status = current.status;
+      }
+    }
+
     const { error } = await supabase
       .from('clients')
-      .update({ status })
-      .eq('phone', phone)
+      .update(updatePayload)
+      .in('phone', jidVariants)
       .eq('tenant_id', tenantId);
 
     if (error) {
-      logger.error({ error: error.message, phone, status }, 'Falha ao atualizar status do cliente');
+      logger.error({ error: error.message, phone: rawPhone, status }, 'Falha ao atualizar status do cliente');
       return false;
     }
     return true;

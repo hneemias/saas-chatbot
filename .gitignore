@@ -1,6 +1,12 @@
 node_modules/
 dist/
+build/
+.next/
 .env
+.env.local
+.env.*.local
+!.env.example
+!admin-panel/.env.example
 *.log
 scratch/
 mcp_config.json

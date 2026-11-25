@@ -7,16 +7,19 @@ import { debounceService } from '../services/debounce.service.js';
 import { agentService } from '../services/agent.service.js';
 import { internalAgentService } from '../services/internal-agent.service.js';
 import { teamService } from '../services/team.service.js';
+import { ragService } from '../services/rag.service.js';
+import { memoryService } from '../services/memory.service.js';
 import { ttsService } from '../services/tts.service.js';
 import { transcriptionService } from '../services/transcription.service.js';
 import { evolutionApi } from '../integrations/evolution.js';
 import { logger } from '../utils/logger.js';
 import { compileSystemPrompt } from '../utils/prompt-compiler.js';
+import { normalizeWhatsAppJid } from '../utils/phone.js';
 
 export const webhookRouter = Router();
 
 webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<void> => {
-  // Responde imediatamente 200 OK para evitar retransmissões
+  // Responde imediatamente 200 OK para evitar retransmissões da Evolution API
   res.status(200).json({ status: 'received' });
 
   const body = req.body as EvolutionWebhookPayload;
@@ -25,15 +28,25 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
     return;
   }
 
-  const remoteJid = body.data.key.remoteJid;
-  if (!remoteJid || remoteJid.endsWith('@g.us')) {
-    // Ignora grupos comuns
-    return;
+  // Ignora eventos que não sejam chegada/criação de mensagens (ex: messages.update, presence, receipts)
+  if (body.event) {
+    const normalizedEvent = body.event.toLowerCase().replace(/_/g, '.');
+    if (normalizedEvent !== 'messages.upsert') {
+      return;
+    }
   }
 
+  const rawRemoteJid = body.data.key.remoteJid;
+  if (!rawRemoteJid || rawRemoteJid.endsWith('@g.us') || rawRemoteJid === 'status@broadcast') {
+    // Ignora grupos e status do WhatsApp
+    return;
+  }
+  const remoteJid = normalizeWhatsAppJid(rawRemoteJid);
+
   const instanceName = body.instance;
-  const isFromMe = body.data.key.fromMe;
+  const isFromMe = Boolean(body.data.key.fromMe);
   const messageId = body.data.key.id;
+  const messageType = body.data.messageType || 'conversation';
 
   try {
     // 1. Obtém os dados do Inquilino (Tenant)
@@ -45,33 +58,54 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
 
     const { tenant, config } = bundle;
 
-    // 2. HANDOVER HUMANO: Se a mensagem foi enviada pelo próprio celular do escritório (fromMe: true)
+    // 2. HANDOVER HUMANO: Verifica se `fromMe: true` foi uma resposta automática do próprio bot ou intervenção humana
     if (isFromMe) {
-      logger.info({ remoteJid }, 'Mensagem enviada pelo atendente humano (fromMe=true): pausando IA para este cliente');
-      
-      // Cria ou atualiza o cliente pausando a IA
-      const client = await clientService.getOrCreate(remoteJid, tenant.id);
-      await clientService.setStatus(remoteJid, tenant.id, 'paused');
-
-      const outText =
+      const rawOutText =
         body.data.message?.conversation ||
         body.data.message?.extendedTextMessage?.text ||
-        '[Mensagem do Atendente]';
+        '';
+
+      // 2.1 Ignora ecos das próprias mensagens/áudios enviados pelo bot via Evolution API
+      if (
+        evolutionApi.wasRecentlySentByBot({
+          instanceName: tenant.evolution_instance_name,
+          remoteJid,
+          messageId,
+          text: rawOutText,
+          messageType,
+        })
+      ) {
+        logger.debug({ remoteJid, messageId }, 'Eco de mensagem enviada pelo próprio bot ignorado');
+        return;
+      }
+
+      // 2.2 Não cria/pausa registro de cliente se o destinatário for membro interno da equipe
+      const targetTeamMember = await teamService.getMember(remoteJid, tenant.id);
+      if (targetTeamMember) {
+        return;
+      }
+
+      logger.info(
+        { remoteJid },
+        'Mensagem enviada pelo atendente humano (fromMe=true): pausando IA para este cliente'
+      );
+
+      const client = await clientService.getOrCreate(remoteJid, tenant.id);
+      await clientService.setStatus(remoteJid, tenant.id, 'paused');
 
       await messageService.logMessage({
         tenant_id: tenant.id,
         client_id: client.id,
         phone: remoteJid,
-        role: 'user', // Registrado como operador humano
-        content: outText,
-        message_type: body.data.messageType,
+        role: 'admin', // Intervenção humana registrada como atendente/admin (nunca como 'user')
+        content: rawOutText || '[Mensagem do Atendente]',
+        message_type: messageType,
       });
 
       return;
     }
 
     const pushName = body.data.pushName || 'Desconhecido';
-    const messageType = body.data.messageType || 'conversation';
     const isAudio = messageType === 'audioMessage' || messageType === 'voiceMessage';
 
     // 3. EXTRAÇÃO OU TRANSCRIÇÃO DE ÁUDIO VIA GEMINI
@@ -82,8 +116,7 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
 
     if (isAudio) {
       logger.info({ remoteJid, messageId }, 'Mensagem de áudio recebida, buscando base64 para transcrição...');
-      
-      // 3.1 Obtém o áudio em base64 da Evolution API
+
       let audioBase64: string | null | undefined = body.data.message?.audioMessage?.base64;
       if (!audioBase64) {
         audioBase64 = await evolutionApi.getBase64FromMediaMessage(
@@ -93,7 +126,6 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         );
       }
 
-      // 3.2 Transcreve com Gemini
       if (audioBase64) {
         const transcribed = await transcriptionService.transcribeAudioBase64(audioBase64);
         if (transcribed) {
@@ -106,9 +138,10 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         messageText = '[Áudio recebido (mídia indisponível)]';
       }
     } else if (!messageText) {
-      // Outras mídias (imagem, documento, vídeo, figurinha)
       messageText = `[Arquivo de Mídia recebido: ${messageType} - A equipe analisará]`;
     }
+
+    const debounceScopeKey = `${tenant.id}:${remoteJid}`;
 
     // 4. VERIFICA SE É MEMBRO DA EQUIPE / ADMIN
     const teamMember = await teamService.getMember(remoteJid, tenant.id);
@@ -116,21 +149,20 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
     if (teamMember && teamMember.role === 'admin') {
       logger.info({ admin: teamMember.name, remoteJid }, 'Mensagem recebida de membro da equipe/admin');
 
-      // 4.1 Tratamento de Comandos de Controle (!shhh e !volte)
-      const trimmed = messageText.trim();
-      if (trimmed.startsWith('!')) {
-        if (trimmed === '!shhh') {
-          await teamService.setStatus(remoteJid, tenant.id, 'paused');
-          await evolutionApi.sendTextMessage({
-            instanceName: tenant.evolution_instance_name,
-            remoteJid,
-            text: '🤫 *Modo silêncio ativado!*\nNão vou responder suas mensagens até você me chamar com *!volte*.',
-            apiKey: tenant.evolution_api_key,
-          });
-          return;
-        }
+      // 4.1 Tratamento de Comandos de Controle (!shhh / !pausar e !volte / !voltei)
+      const normalizedCmd = messageText.trim().toLowerCase();
+      if (normalizedCmd === '!shhh' || normalizedCmd === '!pausar') {
+        await teamService.setStatus(remoteJid, tenant.id, 'paused');
+        await evolutionApi.sendTextMessage({
+          instanceName: tenant.evolution_instance_name,
+          remoteJid,
+          text: '🤫 *Modo silêncio ativado!*\nNão vou responder suas mensagens até você me chamar com *!volte*.',
+          apiKey: tenant.evolution_api_key,
+        });
+        return;
+      }
 
-        // Qualquer outro comando reativa o bot
+      if (normalizedCmd === '!volte' || normalizedCmd === '!voltei') {
         await teamService.setStatus(remoteJid, tenant.id, 'active');
         await evolutionApi.sendTextMessage({
           instanceName: tenant.evolution_instance_name,
@@ -148,7 +180,16 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
       }
 
       // 4.2 Execução do AGENTE INTERNO (Atlas / Assistente Administrativo)
-      await debounceService.bufferMessage(remoteJid, messageText, async (fullText) => {
+      await debounceService.bufferMessage(debounceScopeKey, messageText, async (fullText) => {
+        // Busca histórico ANTES de gravar a mensagem atual para não duplicar no contexto multi-turn do Gemini
+        const history = await messageService.getRecentHistory(remoteJid, tenant.id, 14);
+        const historyFormatted = messageService.formatHistoryForAgent(
+          history,
+          config.internal_agent_name || 'Atlas',
+          teamMember.name,
+          'internal'
+        );
+
         await messageService.logMessage({
           tenant_id: tenant.id,
           phone: remoteJid,
@@ -157,29 +198,31 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
           message_type: messageType,
         });
 
-        const history = await messageService.getRecentHistory(remoteJid, tenant.id, 10);
-        const historyFormatted = messageService.formatHistoryForAgent(
-          history,
-          config.internal_agent_name || 'Atlas',
-          teamMember.name
-        );
-
         const context = {
           tenantId: tenant.id,
           instanceName: tenant.evolution_instance_name,
+          evolutionApiKey: tenant.evolution_api_key,
           notificationGroupId: config.notification_group_id,
           phone: remoteJid,
           clientName: teamMember.name,
           historyFormatted,
+          isInternalTeam: true,
         };
+
+        const enableCatalogTools = Boolean(config.classifier_rules?.enable_product_catalog);
 
         const reply = await internalAgentService.runInternalAssistant({
           systemPrompt: config.internal_system_prompt || '',
           userMessage: fullText,
+          historyMessages: history,
           historyFormatted,
           context,
           adminName: teamMember.name,
           adminRole: teamMember.role,
+          tenantName: tenant.name,
+          agentName: config.internal_agent_name || 'Atlas',
+          externalAgentName: config.external_agent_name || 'Karol',
+          enableCatalogTools,
         });
 
         if (!reply) return;
@@ -245,8 +288,13 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    await debounceService.bufferMessage(remoteJid, messageText, async (fullMessage) => {
-      // Registra mensagem do cliente
+    await debounceService.bufferMessage(debounceScopeKey, messageText, async (fullMessage) => {
+      // Busca histórico anterior e índice de documentos liberados ANTES de gravar a nova mensagem
+      const [history, clientDocumentsIndex] = await Promise.all([
+        messageService.getRecentHistory(remoteJid, tenant.id, 16),
+        ragService.getClientSharedDocumentsIndex(tenant.id, client.id),
+      ]);
+
       await messageService.logMessage({
         tenant_id: tenant.id,
         client_id: client.id,
@@ -256,39 +304,59 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         message_type: messageType,
       });
 
-      const history = await messageService.getRecentHistory(remoteJid, tenant.id, 12);
+      const externalAgentName = config.external_agent_name || 'Karol';
+      const internalAgentName = config.internal_agent_name || 'Atlas';
+      const clientMemorySummary = memoryService.extractClientMemory(client);
+
       const historyFormatted = messageService.formatHistoryForAgent(
         history,
-        config.external_agent_name || 'Karol',
-        client.name || pushName
+        externalAgentName,
+        client.name || pushName,
+        'external'
       );
 
-      const rawPrompt = config.external_system_prompt || 'Você é uma assistente jurídica profissional e atenciosa.';
+      const rawPrompt =
+        config.external_system_prompt ||
+        'Você é {{ agent_name }}, assistente virtual de {{ tenant_name }}. Seja cordial, breve e objetiva.';
+
       const compiledPrompt = compileSystemPrompt(rawPrompt, {
+        mode: 'external',
         tenantName: tenant.name,
         clientName: client.name || pushName,
         clientStatus: client.status,
         phone: remoteJid,
-        agentName: config.external_agent_name || 'Karol',
+        agentName: externalAgentName,
+        externalAgentName,
+        internalAgentName,
         historyFormatted,
+        clientDocumentsIndex,
+        clientMemorySummary,
+        nativeMultiTurnHistory: true,
+        appendSessionContext: true,
       });
 
       const context = {
         tenantId: tenant.id,
         instanceName: tenant.evolution_instance_name,
+        evolutionApiKey: tenant.evolution_api_key,
         notificationGroupId: config.notification_group_id,
         phone: remoteJid,
         clientId: client.id,
         clientName: client.name || pushName,
         historyFormatted,
+        isInternalTeam: false,
       };
+
+      const enableCatalogTools = Boolean(config.classifier_rules?.enable_product_catalog);
 
       const aiReply = await agentService.runConversation({
         systemPrompt: compiledPrompt,
         userMessage: fullMessage,
+        historyMessages: history,
         historyFormatted,
         context,
-        temperature: config.temperature || 0.4,
+        temperature: config.temperature ?? 0.4,
+        enableCatalogTools,
       });
 
       if (!aiReply || aiReply.trim() === '') return;
@@ -312,6 +380,19 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
           message_type: 'text',
         });
       }
+
+      // Atualiza memória episódica de longo prazo do cliente de forma assíncrona (zero impacto na latência)
+      void memoryService
+        .refreshClientMemoryInBackground({
+          tenantId: tenant.id,
+          client,
+          recentMessages: history,
+          latestUserMessage: fullMessage,
+          latestAssistantReply: aiReply,
+        })
+        .catch((memErr) => {
+          logger.warn({ err: memErr?.message, clientId: client.id }, 'Falha assíncrona ao sintetizar memória');
+        });
     });
   } catch (err: any) {
     logger.error({ err: err.message, remoteJid, instanceName }, 'Erro ao processar webhook da Evolution');

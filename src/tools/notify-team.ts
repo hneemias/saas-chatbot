@@ -7,13 +7,13 @@ import { logger } from '../utils/logger.js';
 export const notifyTeamTool: AgentTool = {
   declaration: {
     name: 'notify_team',
-    description: 'Notifica a equipe administrativa via WhatsApp sem pausar a IA. Use quando o cliente perguntar sobre andamento de processo existente ou quando você prometer consultar o advogado.',
+    description: 'Notifica a equipe interna via WhatsApp sem pausar a IA. Use quando o cliente pedir andamento de processo, ordem de serviço ou informação que dependa de confirmação humana.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         reason: {
           type: SchemaType.STRING,
-          description: 'Resumo da dúvida ou consulta do cliente sobre o processo.',
+          description: 'Resumo da dúvida, pedido de orçamento ou consulta de andamento do cliente.',
         },
       },
       required: ['reason'],
@@ -21,9 +21,9 @@ export const notifyTeamTool: AgentTool = {
   },
   execute: async (args: { reason: string }, context: ToolContext) => {
     if (context.notificationGroupId) {
-      const cleanPhone = context.phone.replace('@s.whatsapp.net', '');
+      const cleanPhone = context.phone.replace(/@(s\.whatsapp\.net|lid)$/i, '');
       const clientLabel = context.clientName || cleanPhone;
-      const msg = `ℹ️ *CONSULTA DE PROCESSO*\n\n` +
+      const msg = `ℹ️ *SOLICITAÇÃO DE ACOMPANHAMENTO*\n\n` +
         `👤 *Cliente:* ${clientLabel}\n` +
         `📱 *Tel:* ${cleanPhone}\n\n` +
         `*Resumo:* ${args.reason || 'Consulta geral'}\n\n` +
@@ -34,6 +34,7 @@ export const notifyTeamTool: AgentTool = {
           instanceName: context.instanceName,
           remoteJid: context.notificationGroupId,
           text: msg,
+          apiKey: context.evolutionApiKey,
         });
       } catch (err: any) {
         logger.error({ err: err.message }, 'Falha ao enviar notificação de consulta para o grupo');

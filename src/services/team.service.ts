@@ -1,5 +1,6 @@
 import { supabase } from '../integrations/supabase.js';
 import { logger } from '../utils/logger.js';
+import { getEquivalentPhoneJids } from '../utils/phone.js';
 
 export interface TeamMember {
   id: string;
@@ -12,13 +13,17 @@ export interface TeamMember {
 }
 
 export class TeamService {
-  async getMember(phone: string, tenantId: string): Promise<TeamMember | null> {
+  async getMember(rawPhone: string, tenantId: string): Promise<TeamMember | null> {
     try {
+      const jidVariants = getEquivalentPhoneJids(rawPhone);
+      if (jidVariants.length === 0) return null;
+
       const { data, error } = await supabase
         .from('team_members')
         .select('*')
-        .eq('phone', phone)
+        .in('phone', jidVariants)
         .eq('tenant_id', tenantId)
+        .limit(1)
         .maybeSingle();
 
       if (error || !data) {
@@ -27,26 +32,27 @@ export class TeamService {
 
       return data as TeamMember;
     } catch (err: any) {
-      logger.error({ err: err.message, phone }, 'Erro ao buscar membro da equipe');
+      logger.error({ err: err.message, phone: rawPhone }, 'Erro ao buscar membro da equipe');
       return null;
     }
   }
 
-  async setStatus(phone: string, tenantId: string, status: 'active' | 'paused'): Promise<boolean> {
+  async setStatus(rawPhone: string, tenantId: string, status: 'active' | 'paused'): Promise<boolean> {
     try {
+      const jidVariants = getEquivalentPhoneJids(rawPhone);
       const { error } = await supabase
         .from('team_members')
         .update({ status })
-        .eq('phone', phone)
+        .in('phone', jidVariants)
         .eq('tenant_id', tenantId);
 
       if (error) {
-        logger.error({ error: error.message, phone, status }, 'Erro ao atualizar status do membro da equipe');
+        logger.error({ error: error.message, phone: rawPhone, status }, 'Erro ao atualizar status do membro da equipe');
         return false;
       }
       return true;
     } catch (err: any) {
-      logger.error({ err: err.message, phone }, 'Exceção ao atualizar status do membro da equipe');
+      logger.error({ err: err.message, phone: rawPhone }, 'Exceção ao atualizar status do membro da equipe');
       return false;
     }
   }

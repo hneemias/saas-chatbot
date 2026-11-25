@@ -1,6 +1,8 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import { webhookRouter } from './routes/webhook.routes.js';
+import { knowledgeRouter } from './routes/knowledge.routes.js';
+import { productsRouter } from './routes/products.routes.js';
 import { logger } from './utils/logger.js';
 
 export function createServer(): Express {
@@ -21,6 +23,10 @@ export function createServer(): Express {
 
   // Rotas da Evolution API
   app.use('/webhook', webhookRouter);
+
+  // Rotas REST de Base de Conhecimento e Catálogo de Produtos para o Admin Panel
+  app.use('/api/knowledge', knowledgeRouter);
+  app.use('/api/products', productsRouter);
 
   return app;
 }
