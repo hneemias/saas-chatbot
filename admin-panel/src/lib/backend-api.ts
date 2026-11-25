@@ -1,5 +1,7 @@
-const rawBackendUrl = process.env.BACKEND_API_URL || "http://localhost:3000";
-const backendBaseUrl = rawBackendUrl.replace(/\/+$/, "");
+function getBackendBaseUrl(): string {
+    const raw = process.env.BACKEND_API_URL || "http://localhost:3000";
+    return raw.replace(/\/+$/, "");
+}
 
 function getAdminHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
@@ -15,7 +17,7 @@ export function getDefaultWebhookUrl(): string {
     if (process.env.BACKEND_PUBLIC_WEBHOOK_URL) {
         return process.env.BACKEND_PUBLIC_WEBHOOK_URL;
     }
-    return `${backendBaseUrl}/webhook/evolution`;
+    return `${getBackendBaseUrl()}/webhook/evolution`;
 }
 
 export async function getBackendHealth(): Promise<{
@@ -23,6 +25,7 @@ export async function getBackendHealth(): Promise<{
     latency: number;
     url: string;
 }> {
+    const backendBaseUrl = getBackendBaseUrl();
     const start = Date.now();
     try {
         const controller = new AbortController();
@@ -51,6 +54,7 @@ export async function backendFetchJson<T = any>(
     path: string,
     init?: RequestInit
 ): Promise<{ ok: boolean; status: number; data?: T; error?: string }> {
+    const backendBaseUrl = getBackendBaseUrl();
     try {
         const res = await fetch(`${backendBaseUrl}${path}`, {
             ...init,
@@ -75,8 +79,7 @@ export async function backendFetchJson<T = any>(
         return {
             ok: false,
             status: 503,
-            error:
-                `Servidor Backend (${backendBaseUrl}) offline. Inicie-o na raiz do projeto com "npm run dev" para gerar embeddings e executar buscas vetoriais.`,
+            error: `Servidor Backend (${backendBaseUrl}) indisponível no momento.`,
         };
     }
 }

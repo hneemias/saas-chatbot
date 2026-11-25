@@ -1,12 +1,16 @@
-const rawBaseUrl = process.env.EVOLUTION_API_URL;
-const baseUrl = rawBaseUrl?.endsWith("/") ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
-const globalApiKey = process.env.EVOLUTION_API_KEY;
+function getEvoConfig() {
+    const rawBaseUrl = process.env.EVOLUTION_API_URL;
+    const baseUrl = rawBaseUrl?.endsWith("/") ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
+    const globalApiKey = process.env.EVOLUTION_API_KEY;
+    return { baseUrl, globalApiKey };
+}
 
 export function getEvolutionBaseUrl(): string | null {
-    return baseUrl || null;
+    return getEvoConfig().baseUrl || null;
 }
 
 export async function getInstanceStatus(instanceName: string, apiKey?: string) {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     const key = apiKey || globalApiKey;
 
     if (!baseUrl) {
@@ -33,6 +37,7 @@ export async function getInstanceStatus(instanceName: string, apiKey?: string) {
 }
 
 export async function getQRCode(instanceName: string, apiKey?: string) {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     const key = apiKey || globalApiKey;
 
     if (!baseUrl) {
@@ -59,6 +64,7 @@ export async function getQRCode(instanceName: string, apiKey?: string) {
 }
 
 export async function logoutInstance(instanceName: string, apiKey?: string) {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     const key = apiKey || globalApiKey;
 
     if (!baseUrl) {
@@ -85,6 +91,7 @@ export async function logoutInstance(instanceName: string, apiKey?: string) {
 }
 
 export async function listInstances(apiKey?: string) {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     const key = apiKey || globalApiKey;
 
     if (!baseUrl) {
@@ -111,6 +118,7 @@ export async function listInstances(apiKey?: string) {
 }
 
 export async function getEvoHealth() {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     if (!baseUrl) return false;
     try {
         const response = await fetch(`${baseUrl}/instance/fetchInstances`, {
@@ -124,6 +132,7 @@ export async function getEvoHealth() {
 }
 
 export async function getGroups(instanceName: string, apiKey?: string) {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     const key = apiKey || globalApiKey;
 
     if (!baseUrl) {
@@ -170,6 +179,7 @@ export async function getGroups(instanceName: string, apiKey?: string) {
 }
 
 export async function getWebhookConfig(instanceName: string, apiKey?: string) {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     const key = apiKey || globalApiKey;
     if (!baseUrl) return { error: "EVOLUTION_API_URL não configurada" };
 
@@ -196,6 +206,7 @@ export async function setWebhookConfig(
     webhookUrl: string,
     apiKey?: string
 ) {
+    const { baseUrl, globalApiKey } = getEvoConfig();
     const key = apiKey || globalApiKey;
     if (!baseUrl) return { error: "EVOLUTION_API_URL não configurada" };
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase-server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { comparePassword, hashPassword, requireAdminSession, signJWT } from "@/lib/auth";
 
 export async function login(formData: FormData) {
@@ -44,10 +44,16 @@ export async function login(formData: FormData) {
             full_name: user.full_name,
         });
 
+        const hdrs = await headers();
+        const forwardedProto = hdrs.get("x-forwarded-proto");
+        const isHttps = forwardedProto
+            ? forwardedProto.split(",")[0].trim() === "https"
+            : process.env.NODE_ENV === "production";
+
         cookieStore.set("admin_token", token, {
             httpOnly: true,
             sameSite: "lax",
-            secure: process.env.NODE_ENV === "production",
+            secure: isHttps,
             maxAge: 60 * 60 * 24, // 24h
             path: "/",
         });

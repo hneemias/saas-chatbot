@@ -250,18 +250,39 @@ npm test
 
 ## 🚀 Deploy em Produção
 
-### Backend (Node.js / PM2)
+### Opção Recomendada: Coolify na Hostinger VPS (Backend + Painel + Redis juntos)
+
+O repositório já possui [`docker-compose.yml`](docker-compose.yml), [`Dockerfile`](Dockerfile) (Backend) e [`admin-panel/Dockerfile`](admin-panel/Dockerfile) (Next.js 16 Standalone) configurados para subir toda a plataforma junta em um único recurso no **Coolify**:
+
+1. No painel do **Coolify**, clique em **+ New Resource** → **Public / Private Repository (GitHub)** e selecione `hneemias/saas-chatbot` (branch `main`).
+2. Em **Build Pack**, selecione **`Docker Compose`** (caminho padrão `/docker-compose.yml`).
+3. Em **Domains** (logo abaixo dos serviços detectados pelo Coolify):
+   - No serviço **`admin-panel`**, informe o domínio do painel com a porta **`3001`**:
+     ```text
+     https://painel.seudominio.com:3001
+     ```
+   - No serviço **`backend`**, informe o domínio público da API/Webhook com a porta **`3000`**:
+     ```text
+     https://api.seudominio.com:3000
+     ```
+   *(O serviço `redis` e a comunicação interna `admin-panel` → `http://backend:3000` já funcionam automaticamente na rede privada interna do Docker, sem precisar expor portas extras).*
+4. Abra a aba **Environment Variables** → ative **Developer View** e cole as variáveis do template [`.env.coolify.example`](.env.coolify.example) preenchidas com suas credenciais (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `GEMINI_API_KEY`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `BACKEND_PUBLIC_WEBHOOK_URL=https://api.seudominio.com/webhook/evolution`).
+5. Clique em **Deploy**. Assim que os 3 containers (`redis`, `backend`, `admin-panel`) ficarem *Healthy*, acesse `https://painel.seudominio.com` e, na aba **WhatsApp** de cada empresa, clique em **Salvar Webhook na Evolution** para apontar automaticamente para `https://api.seudominio.com/webhook/evolution`.
+
+---
+
+### Execução Manual em VPS Tradicional (PM2)
+
+#### Backend (Node.js / PM2)
 ```bash
 npm run build
 pm2 start dist/main.js --name "saas-chatbot-backend" -i 1
 pm2 save
 ```
 
-### Painel Administrativo (Next.js 16)
+#### Painel Administrativo (Next.js 16)
 ```bash
 cd admin-panel
 npm run build
 npm start
 ```
-
-Na aba **WhatsApp** de cada empresa no painel, basta clicar em **Configurar Automaticamente** para registrar o endpoint `POST /webhook/evolution` (`MESSAGES_UPSERT`) diretamente na Evolution API.

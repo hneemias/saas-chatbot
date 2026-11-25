@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+.next
+.git
+.gitignore
+.vscode
+.agents
+scratch
+tests
+coverage
+*.log
+.env
+.env.*
+!.env.example
+admin-panel

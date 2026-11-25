@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { verifyJWT } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/api/health"];
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;

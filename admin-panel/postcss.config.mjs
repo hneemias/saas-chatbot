@@ -1,8 +1,10 @@
+import fs from "node:fs";
 import path from "node:path";
 
-const adminRoot = process.cwd().endsWith("admin-panel")
-  ? process.cwd()
-  : path.join(process.cwd(), "admin-panel");
+const candidateSubdir = path.join(process.cwd(), "admin-panel");
+const adminRoot = fs.existsSync(path.join(candidateSubdir, "package.json"))
+  ? candidateSubdir
+  : process.cwd();
 
 const config = {
   plugins: {
