@@ -866,7 +866,7 @@ export async function getClientDrawerDetails(params: {
             .from("messages")
             .select("id, role, content, message_type, created_at")
             .eq("tenant_id", params.tenantId)
-            .or(`phone.eq.${params.phone},client_id.eq.${params.clientId}`)
+            .eq("client_id", params.clientId)
             .order("created_at", { ascending: false })
             .limit(50),
         getKnowledgeDocuments({
