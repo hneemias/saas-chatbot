@@ -88,7 +88,16 @@ export class InternalAgentService {
     );
 
     const candidateModels = Array.from(
-      new Set([env.GEMINI_MODEL, env.GEMINI_FALLBACK_MODEL].filter(Boolean))
+      new Set(
+        [
+          env.GEMINI_MODEL,
+          'gemini-flash-lite-latest',
+          env.GEMINI_FALLBACK_MODEL,
+          'gemini-3.5-flash-lite',
+          'gemini-3.8-flash',
+          'gemini-3.6-flash',
+        ].filter(Boolean)
+      )
     );
 
     let lastError: any = null;
@@ -104,7 +113,7 @@ export class InternalAgentService {
           },
           tools: [{ functionDeclarations: activeDeclarations }],
         },
-        { timeout: 20000 }
+        { timeout: 35000 }
       );
 
       // Monta histórico inicial no formato de conteúdos nativos do Gemini
@@ -174,11 +183,15 @@ export class InternalAgentService {
           msg.toLowerCase().includes('abort') ||
           msg.toLowerCase().includes('timeout') ||
           msg.toLowerCase().includes('high demand') ||
-          msg.toLowerCase().includes('overloaded');
+          msg.toLowerCase().includes('overloaded') ||
+          msg.toLowerCase().includes('resource has been exhausted');
 
-        if (isTransientOverload && modelName !== candidateModels[candidateModels.length - 1]) {
+        const currentIdx = candidateModels.indexOf(modelName);
+        const nextModel = candidateModels[currentIdx + 1];
+
+        if (isTransientOverload && nextModel) {
           logger.warn(
-            { failedModel: modelName, fallbackModel: env.GEMINI_FALLBACK_MODEL, admin: adminName, err: msg },
+            { failedModel: modelName, fallbackModel: nextModel, admin: adminName, err: msg },
             'Modelo do Agente Interno com pico de demanda/timeout; alternando para modelo de contingência'
           );
           continue;

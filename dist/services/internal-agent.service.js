@@ -44,7 +44,14 @@ export class InternalAgentService {
             ? [...internalDeclarations, internalSearchProductsTool.declaration]
             : internalDeclarations;
         const { history, effectiveUserMessage } = messageService.buildGeminiChatTurns(historyMessages, userMessage, 'internal');
-        const candidateModels = Array.from(new Set([env.GEMINI_MODEL, env.GEMINI_FALLBACK_MODEL].filter(Boolean)));
+        const candidateModels = Array.from(new Set([
+            env.GEMINI_MODEL,
+            'gemini-flash-lite-latest',
+            env.GEMINI_FALLBACK_MODEL,
+            'gemini-3.5-flash-lite',
+            'gemini-3.8-flash',
+            'gemini-3.6-flash',
+        ].filter(Boolean)));
         let lastError = null;
         for (const modelName of candidateModels) {
             const model = this.genAI.getGenerativeModel({
@@ -55,7 +62,7 @@ export class InternalAgentService {
                     maxOutputTokens: 1000,
                 },
                 tools: [{ functionDeclarations: activeDeclarations }],
-            }, { timeout: 20000 });
+            }, { timeout: 35000 });
             // Monta histórico inicial no formato de conteúdos nativos do Gemini
             const currentContents = [
                 ...history,
@@ -112,9 +119,12 @@ export class InternalAgentService {
                     msg.toLowerCase().includes('abort') ||
                     msg.toLowerCase().includes('timeout') ||
                     msg.toLowerCase().includes('high demand') ||
-                    msg.toLowerCase().includes('overloaded');
-                if (isTransientOverload && modelName !== candidateModels[candidateModels.length - 1]) {
-                    logger.warn({ failedModel: modelName, fallbackModel: env.GEMINI_FALLBACK_MODEL, admin: adminName, err: msg }, 'Modelo do Agente Interno com pico de demanda/timeout; alternando para modelo de contingência');
+                    msg.toLowerCase().includes('overloaded') ||
+                    msg.toLowerCase().includes('resource has been exhausted');
+                const currentIdx = candidateModels.indexOf(modelName);
+                const nextModel = candidateModels[currentIdx + 1];
+                if (isTransientOverload && nextModel) {
+                    logger.warn({ failedModel: modelName, fallbackModel: nextModel, admin: adminName, err: msg }, 'Modelo do Agente Interno com pico de demanda/timeout; alternando para modelo de contingência');
                     continue;
                 }
                 logger.error({ err: msg, model: modelName, admin: adminName }, 'Falha na resposta do Agente Interno');

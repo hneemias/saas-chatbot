@@ -165,56 +165,71 @@ webhookRouter.post('/evolution', async (req, res) => {
                     isInternalTeam: true,
                 };
                 const enableCatalogTools = Boolean(config.classifier_rules?.enable_product_catalog);
-                const reply = await internalAgentService.runInternalAssistant({
-                    systemPrompt: config.internal_system_prompt || '',
-                    userMessage: fullText,
-                    historyMessages: history,
-                    historyFormatted,
-                    context,
-                    adminName: teamMember.name,
-                    adminRole: teamMember.role,
-                    tenantName: tenant.name,
-                    agentName: config.internal_agent_name || 'Atlas',
-                    externalAgentName: config.external_agent_name || 'Karol',
-                    enableCatalogTools,
-                });
-                if (!reply)
-                    return;
-                // SE O ADMIN ENVIOU ÁUDIO -> RESPONDE POR VOZ VIA TTS MULTIVOZES
-                if (isAudio) {
-                    logger.info({ admin: teamMember.name }, 'Gerando resposta em áudio (TTS) para o administrador');
-                    const audioBase64 = await ttsService.generateSpeechBase64(reply);
-                    if (audioBase64) {
-                        await evolutionApi.sendAudioMessage({
+                try {
+                    const reply = await internalAgentService.runInternalAssistant({
+                        systemPrompt: config.internal_system_prompt || '',
+                        userMessage: fullText,
+                        historyMessages: history,
+                        historyFormatted,
+                        context,
+                        adminName: teamMember.name,
+                        adminRole: teamMember.role,
+                        tenantName: tenant.name,
+                        agentName: config.internal_agent_name || 'Atlas',
+                        externalAgentName: config.external_agent_name || 'Karol',
+                        enableCatalogTools,
+                    });
+                    if (!reply)
+                        return;
+                    // SE O ADMIN ENVIOU ÁUDIO -> RESPONDE POR VOZ VIA TTS MULTIVOZES
+                    if (isAudio) {
+                        logger.info({ admin: teamMember.name }, 'Gerando resposta em áudio (TTS) para o administrador');
+                        const audioBase64 = await ttsService.generateSpeechBase64(reply);
+                        if (audioBase64) {
+                            await evolutionApi.sendAudioMessage({
+                                instanceName: tenant.evolution_instance_name,
+                                remoteJid,
+                                audioBase64,
+                                apiKey: tenant.evolution_api_key,
+                            });
+                            await messageService.logMessage({
+                                tenant_id: tenant.id,
+                                phone: remoteJid,
+                                role: 'assistant',
+                                content: `[Áudio de Resposta]: ${reply}`,
+                                message_type: 'audio',
+                            });
+                            return;
+                        }
+                    }
+                    // Resposta em Texto padrão para a equipe
+                    await evolutionApi.sendTextMessage({
+                        instanceName: tenant.evolution_instance_name,
+                        remoteJid,
+                        text: reply,
+                        apiKey: tenant.evolution_api_key,
+                    });
+                    await messageService.logMessage({
+                        tenant_id: tenant.id,
+                        phone: remoteJid,
+                        role: 'assistant',
+                        content: reply,
+                        message_type: 'text',
+                    });
+                }
+                catch (err) {
+                    logger.error({ err: err?.message, admin: teamMember.name, remoteJid }, 'Erro ao processar resposta do Agente Interno');
+                    try {
+                        const fallbackText = '⚠️ Tive uma breve oscilação de conexão ao consultar a IA. Por favor, tente novamente em alguns instantes.';
+                        await evolutionApi.sendTextMessage({
                             instanceName: tenant.evolution_instance_name,
                             remoteJid,
-                            audioBase64,
+                            text: fallbackText,
                             apiKey: tenant.evolution_api_key,
                         });
-                        await messageService.logMessage({
-                            tenant_id: tenant.id,
-                            phone: remoteJid,
-                            role: 'assistant',
-                            content: `[Áudio de Resposta]: ${reply}`,
-                            message_type: 'audio',
-                        });
-                        return;
                     }
+                    catch { }
                 }
-                // Resposta em Texto padrão para a equipe
-                await evolutionApi.sendTextMessage({
-                    instanceName: tenant.evolution_instance_name,
-                    remoteJid,
-                    text: reply,
-                    apiKey: tenant.evolution_api_key,
-                });
-                await messageService.logMessage({
-                    tenant_id: tenant.id,
-                    phone: remoteJid,
-                    role: 'assistant',
-                    content: reply,
-                    message_type: 'text',
-                });
             });
             return;
         }
@@ -280,47 +295,70 @@ webhookRouter.post('/evolution', async (req, res) => {
                 isInternalTeam: false,
             };
             const enableCatalogTools = Boolean(config.classifier_rules?.enable_product_catalog);
-            const aiReply = await agentService.runConversation({
-                systemPrompt: compiledPrompt,
-                userMessage: fullMessage,
-                historyMessages: history,
-                historyFormatted,
-                context,
-                temperature: config.temperature ?? 0.4,
-                enableCatalogTools,
-            });
-            if (!aiReply || aiReply.trim() === '')
-                return;
-            const chunks = agentService.splitIntoChunks(aiReply);
-            for (const chunk of chunks) {
-                await evolutionApi.sendTextMessage({
-                    instanceName: tenant.evolution_instance_name,
-                    remoteJid,
-                    text: chunk,
-                    delay: 1500,
-                    apiKey: tenant.evolution_api_key,
+            try {
+                const aiReply = await agentService.runConversation({
+                    systemPrompt: compiledPrompt,
+                    userMessage: fullMessage,
+                    historyMessages: history,
+                    historyFormatted,
+                    context,
+                    temperature: config.temperature ?? 0.4,
+                    enableCatalogTools,
                 });
-                await messageService.logMessage({
-                    tenant_id: tenant.id,
-                    client_id: client.id,
-                    phone: remoteJid,
-                    role: 'assistant',
-                    content: chunk,
-                    message_type: 'text',
+                if (!aiReply || aiReply.trim() === '')
+                    return;
+                const chunks = agentService.splitIntoChunks(aiReply);
+                for (const chunk of chunks) {
+                    await evolutionApi.sendTextMessage({
+                        instanceName: tenant.evolution_instance_name,
+                        remoteJid,
+                        text: chunk,
+                        delay: 1500,
+                        apiKey: tenant.evolution_api_key,
+                    });
+                    await messageService.logMessage({
+                        tenant_id: tenant.id,
+                        client_id: client.id,
+                        phone: remoteJid,
+                        role: 'assistant',
+                        content: chunk,
+                        message_type: 'text',
+                    });
+                }
+                // Atualiza memória episódica de longo prazo do cliente de forma assíncrona (zero impacto na latência)
+                void memoryService
+                    .refreshClientMemoryInBackground({
+                    tenantId: tenant.id,
+                    client,
+                    recentMessages: history,
+                    latestUserMessage: fullMessage,
+                    latestAssistantReply: aiReply,
+                })
+                    .catch((memErr) => {
+                    logger.warn({ err: memErr?.message, clientId: client.id }, 'Falha assíncrona ao sintetizar memória');
                 });
             }
-            // Atualiza memória episódica de longo prazo do cliente de forma assíncrona (zero impacto na latência)
-            void memoryService
-                .refreshClientMemoryInBackground({
-                tenantId: tenant.id,
-                client,
-                recentMessages: history,
-                latestUserMessage: fullMessage,
-                latestAssistantReply: aiReply,
-            })
-                .catch((memErr) => {
-                logger.warn({ err: memErr?.message, clientId: client.id }, 'Falha assíncrona ao sintetizar memória');
-            });
+            catch (err) {
+                logger.error({ err: err?.message, phone: remoteJid }, 'Erro crítico na resposta do agente para o cliente');
+                try {
+                    const fallbackText = 'Tive uma breve oscilação de conexão no momento. Você poderia repetir sua última pergunta por favor?';
+                    await evolutionApi.sendTextMessage({
+                        instanceName: tenant.evolution_instance_name,
+                        remoteJid,
+                        text: fallbackText,
+                        apiKey: tenant.evolution_api_key,
+                    });
+                    await messageService.logMessage({
+                        tenant_id: tenant.id,
+                        client_id: client.id,
+                        phone: remoteJid,
+                        role: 'assistant',
+                        content: fallbackText,
+                        message_type: 'text',
+                    });
+                }
+                catch { }
+            }
         });
     }
     catch (err) {
