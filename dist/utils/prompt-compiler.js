@@ -93,6 +93,7 @@ export function compileSystemPrompt(rawPrompt, options) {
                 `- Empresa / Organização: ${tenantName}`,
                 `- Copiloto Interno Ativo: ${internalAgentName} (Assistente Externa de Clientes: ${externalAgentName})`,
                 `- Membro da Equipe Autenticado: ${adminName} (Cargo: ${adminRole}${phone ? ` | WhatsApp: ${phone}` : ''})`,
+                `- Diretriz de Formatação (WhatsApp): use APENAS UM asterisco para negrito (*negrito*). NUNCA use asteriscos duplos (**negrito**) e NUNCA dobre aspas (""destaque"").`,
                 '</session_context>',
             ];
             result += `\n${lines.join('\n')}`;
@@ -115,7 +116,8 @@ export function compileSystemPrompt(rawPrompt, options) {
                 lines.push(`- Memória de Longo Prazo do Cliente: Primeiro atendimento / sem fatos anteriores consolidados.`);
             }
             lines.push(`- Documentos e Atualizações Liberados no Dossiê deste Cliente:\n${docsIndex}`);
-            lines.push(`- Diretrizes Automáticas de Estado:\n` +
+            lines.push(`- Diretrizes Automáticas de Formatação e Estado:\n` +
+                `  • Formatação no WhatsApp: use APENAS UM asterisco para negrito (*negrito*). NUNCA use asteriscos duplos (**negrito**) e NUNCA dobre aspas (""destaque"").\n` +
                 `  • Se "Nome Registrado do Cliente" for "Desconhecido" e o cliente informar o nome, acione \`save_client_name\` imediatamente.\n` +
                 `  • Se houver documentos liberados acima relacionados à pergunta do cliente, consulte \`search_knowledge_base\` antes de responder.\n` +
                 `  • Se "Status Atual do Atendimento" for \`triagem_concluida\` ou \`converted\`, NÃO acione \`convert_lead\` novamente para o mesmo assunto.`);

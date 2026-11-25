@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { formatWhatsAppText } from '../utils/whatsapp-formatter.js';
 
 export interface SendTextOptions {
   instanceName: string;
@@ -144,7 +145,7 @@ export class EvolutionApiClient {
       return null;
     }
 
-    const trimmedText = text.trim();
+    const trimmedText = formatWhatsAppText(text.trim());
     const url = `${this.baseUrl}/message/sendText/${instanceName}`;
     const key = apiKey || this.defaultApiKey;
 

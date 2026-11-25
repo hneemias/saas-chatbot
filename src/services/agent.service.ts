@@ -7,6 +7,8 @@ import { MessageRecord, ToolContext } from '../types/index.js';
 import { messageService } from './message.service.js';
 import { logger } from '../utils/logger.js';
 
+import { formatWhatsAppText } from '../utils/whatsapp-formatter.js';
+
 export class AgentService {
   private genAI: GoogleGenerativeAI;
 
@@ -58,8 +60,7 @@ export class AgentService {
           'gemini-flash-lite-latest',
           env.GEMINI_FALLBACK_MODEL,
           'gemini-3.5-flash-lite',
-          'gemini-3.8-flash',
-          'gemini-3.6-flash',
+          'gemini-3-flash-preview',
         ].filter(Boolean)
       )
     );
@@ -80,6 +81,34 @@ export class AgentService {
         { timeout: 35000 }
       );
 
+      // Função de chamada com retry rápido em caso de pico momentâneo (503/high demand)
+      const executeWithRetry = async (contents: any[]): Promise<any> => {
+        let attempt = 0;
+        const MAX_RETRIES = 2;
+        while (true) {
+          try {
+            return await model.generateContent({ contents });
+          } catch (err: any) {
+            attempt++;
+            const msg = String(err?.message || '');
+            const is503 =
+              msg.includes('503') ||
+              msg.toLowerCase().includes('high demand') ||
+              msg.toLowerCase().includes('overloaded');
+
+            if (is503 && attempt <= MAX_RETRIES) {
+              logger.warn(
+                { model: modelName, attempt, maxRetries: MAX_RETRIES, phone: context.phone },
+                'Oscilação temporária de demanda no Gemini (503); aguardando 1s para nova tentativa automática'
+              );
+              await new Promise((r) => setTimeout(r, 1000 * attempt));
+              continue;
+            }
+            throw err;
+          }
+        }
+      };
+
       // Monta histórico inicial no formato de conteúdos nativos do Gemini
       const currentContents: any[] = [
         ...history,
@@ -87,7 +116,7 @@ export class AgentService {
       ];
 
       try {
-        let result = await model.generateContent({ contents: currentContents });
+        let result = await executeWithRetry(currentContents);
         let response = result.response;
 
         // Loop de execução de ferramentas (Tool Calling)
@@ -103,7 +132,7 @@ export class AgentService {
           }
 
           const functionResponses = await Promise.all(
-            functionCalls.map(async (call) => {
+            functionCalls.map(async (call: any) => {
               logger.info({ tool: call.name, args: call.args, phone: context.phone }, 'Agente executando ferramenta');
 
               const tool = activeToolsMap[call.name];
@@ -133,12 +162,12 @@ export class AgentService {
             parts: functionResponses,
           });
 
-          result = await model.generateContent({ contents: currentContents });
+          result = await executeWithRetry(currentContents);
           response = result.response;
         }
 
         const replyText = response.text();
-        return (replyText || '').trim();
+        return formatWhatsAppText((replyText || '').trim());
       } catch (err: any) {
         lastError = err;
         const msg = String(err?.message || '');

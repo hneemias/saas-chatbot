@@ -4,6 +4,7 @@ import { agentTools, toolsDeclarations } from '../tools/index.js';
 import { searchProductsTool, sendProductPhotoTool } from '../tools/products-tools.js';
 import { messageService } from './message.service.js';
 import { logger } from '../utils/logger.js';
+import { formatWhatsAppText } from '../utils/whatsapp-formatter.js';
 export class AgentService {
     genAI;
     constructor() {
@@ -28,8 +29,7 @@ export class AgentService {
             'gemini-flash-lite-latest',
             env.GEMINI_FALLBACK_MODEL,
             'gemini-3.5-flash-lite',
-            'gemini-3.8-flash',
-            'gemini-3.6-flash',
+            'gemini-3-flash-preview',
         ].filter(Boolean)));
         let lastError = null;
         for (const modelName of candidateModels) {
@@ -42,13 +42,36 @@ export class AgentService {
                 },
                 tools: [{ functionDeclarations: activeDeclarations }],
             }, { timeout: 35000 });
+            // Função de chamada com retry rápido em caso de pico momentâneo (503/high demand)
+            const executeWithRetry = async (contents) => {
+                let attempt = 0;
+                const MAX_RETRIES = 2;
+                while (true) {
+                    try {
+                        return await model.generateContent({ contents });
+                    }
+                    catch (err) {
+                        attempt++;
+                        const msg = String(err?.message || '');
+                        const is503 = msg.includes('503') ||
+                            msg.toLowerCase().includes('high demand') ||
+                            msg.toLowerCase().includes('overloaded');
+                        if (is503 && attempt <= MAX_RETRIES) {
+                            logger.warn({ model: modelName, attempt, maxRetries: MAX_RETRIES, phone: context.phone }, 'Oscilação temporária de demanda no Gemini (503); aguardando 1s para nova tentativa automática');
+                            await new Promise((r) => setTimeout(r, 1000 * attempt));
+                            continue;
+                        }
+                        throw err;
+                    }
+                }
+            };
             // Monta histórico inicial no formato de conteúdos nativos do Gemini
             const currentContents = [
                 ...history,
                 { role: 'user', parts: [{ text: effectiveUserMessage }] },
             ];
             try {
-                let result = await model.generateContent({ contents: currentContents });
+                let result = await executeWithRetry(currentContents);
                 let response = result.response;
                 // Loop de execução de ferramentas (Tool Calling)
                 let iterations = 0;
@@ -85,11 +108,11 @@ export class AgentService {
                         role: 'user',
                         parts: functionResponses,
                     });
-                    result = await model.generateContent({ contents: currentContents });
+                    result = await executeWithRetry(currentContents);
                     response = result.response;
                 }
                 const replyText = response.text();
-                return (replyText || '').trim();
+                return formatWhatsAppText((replyText || '').trim());
             }
             catch (err) {
                 lastError = err;
