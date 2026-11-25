@@ -1,21 +1,6 @@
 # ==============================================================================
-# Stage 1: Build TypeScript Backend
-# ==============================================================================
-FROM node:22-alpine AS builder
-
-WORKDIR /app
-
-ENV NODE_ENV=development
-
-COPY package.json package-lock.json ./
-RUN npm ci --include=dev
-
-COPY tsconfig.json ./
-COPY src ./src
-RUN npm run build
-
-# ==============================================================================
-# Stage 2: Production Runtime (Node.js 22 Alpine)
+# Production Runtime (Node.js 22 Alpine)
+# Utiliza dist pré-compilado para build ultrarrápido (<15s) e zero sobrecarga de RAM na VPS
 # ==============================================================================
 FROM node:22-alpine AS runner
 
@@ -29,7 +14,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/dist ./dist
+COPY dist ./dist
 
 EXPOSE 3000
 
