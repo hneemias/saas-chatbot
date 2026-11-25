@@ -218,7 +218,7 @@ export async function setWebhookConfig(
                 url: webhookUrl,
                 webhookByEvents: false,
                 webhookBase64: true,
-                events: ["MESSAGES_UPSERT"],
+                events: ["MESSAGES_UPSERT", "SEND_MESSAGE"],
             },
         },
         {
@@ -226,7 +226,7 @@ export async function setWebhookConfig(
             url: webhookUrl,
             webhook_by_events: false,
             webhook_base64: true,
-            events: ["MESSAGES_UPSERT"],
+            events: ["MESSAGES_UPSERT", "SEND_MESSAGE"],
         },
     ];
 

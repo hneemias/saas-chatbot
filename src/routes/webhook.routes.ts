@@ -29,10 +29,10 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Ignora eventos que não sejam chegada/criação de mensagens (ex: messages.update, presence, receipts)
+  // Aceita chegada de mensagens (messages.upsert) e envios manuais do atendente humano (send.message)
   if (body.event) {
     const normalizedEvent = body.event.toLowerCase().replace(/_/g, '.');
-    if (normalizedEvent !== 'messages.upsert') {
+    if (normalizedEvent !== 'messages.upsert' && normalizedEvent !== 'send.message') {
       return;
     }
   }
@@ -61,9 +61,14 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
 
     // 2. HANDOVER HUMANO: Verifica se `fromMe: true` foi uma resposta automática do próprio bot ou intervenção humana
     if (isFromMe) {
+      const rawMsg = body.data.message as any;
       const rawOutText =
-        body.data.message?.conversation ||
-        body.data.message?.extendedTextMessage?.text ||
+        rawMsg?.conversation ||
+        rawMsg?.extendedTextMessage?.text ||
+        rawMsg?.imageMessage?.caption ||
+        rawMsg?.videoMessage?.caption ||
+        rawMsg?.documentMessage?.caption ||
+        (messageType === 'audioMessage' || messageType === 'voiceMessage' ? '[Áudio do Atendente]' : '') ||
         '';
 
       // 2.1 Ignora ecos das próprias mensagens/áudios enviados pelo bot via Evolution API
