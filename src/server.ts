@@ -12,17 +12,22 @@ export function createServer(): Express {
   app.use(express.json({ limit: '25mb' }));
   app.use(express.urlencoded({ extended: true }));
 
-  // Healthcheck
-  app.get('/health', (_req, res) => {
+  // Healthcheck (raiz e /api)
+  const healthHandler = (_req: express.Request, res: express.Response) => {
     res.json({
       status: 'ok',
       service: 'saas-chatbot-backend',
       timestamp: new Date().toISOString(),
     });
-  });
+  };
 
-  // Rotas da Evolution API
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
+  app.get('/api', healthHandler);
+
+  // Rotas da Evolution API (suporta /webhook e /api/webhook)
   app.use('/webhook', webhookRouter);
+  app.use('/api/webhook', webhookRouter);
 
   // Rotas REST de Base de Conhecimento e Catálogo de Produtos para o Admin Panel
   app.use('/api/knowledge', knowledgeRouter);

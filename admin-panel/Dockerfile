@@ -15,11 +15,15 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
 RUN npm run build
 
@@ -44,6 +48,6 @@ COPY --from=builder /app/.next/static ./.next/static
 EXPOSE 3001
 
 HEALTHCHECK --interval=20s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:3001/api/health || exit 1
+  CMD curl -fsS http://127.0.0.1:3001/painel/api/health || exit 1
 
 CMD ["node", "server.js"]

@@ -48,11 +48,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - default
+      - coolify
+    labels:
+      - "coolify.managed=true"
+      - "coolify.port=3000"
+      - "traefik.enable=true"
+      - "traefik.http.routers.chatbot-backend.rule=Host(`chatbot.hneemias.cloud`) && (PathPrefix(`/api`) || PathPrefix(`/webhook`))"
+      - "traefik.http.routers.chatbot-backend.entrypoints=https"
+      - "traefik.http.routers.chatbot-backend.tls=true"
+      - "traefik.http.routers.chatbot-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.chatbot-backend.loadbalancer.server.port=3000"
 
   admin-panel:
     build:
       context: ./admin-panel
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL}}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     restart: unless-stopped
     depends_on:
       backend:
@@ -70,16 +85,42 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       JWT_SECRET: ${JWT_SECRET}
       BACKEND_API_URL: ${BACKEND_API_URL:-http://backend:3000}
-      BACKEND_PUBLIC_WEBHOOK_URL: ${BACKEND_PUBLIC_WEBHOOK_URL:-}
+      BACKEND_PUBLIC_WEBHOOK_URL: ${BACKEND_PUBLIC_WEBHOOK_URL:-https://chatbot.hneemias.cloud/webhook/evolution}
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       EVOLUTION_API_URL: ${EVOLUTION_API_URL}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/api/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/painel/api/health"]
       interval: 20s
       timeout: 5s
       retries: 3
       start_period: 20s
+    networks:
+      - default
+      - coolify
+    labels:
+      - "coolify.managed=true"
+      - "coolify.port=3001"
+      - "traefik.enable=true"
+      - "traefik.http.routers.chatbot-panel.rule=Host(`chatbot.hneemias.cloud`) && PathPrefix(`/painel`)"
+      - "traefik.http.routers.chatbot-panel.entrypoints=https"
+      - "traefik.http.routers.chatbot-panel.tls=true"
+      - "traefik.http.routers.chatbot-panel.tls.certresolver=letsencrypt"
+      - "traefik.http.services.chatbot-panel.loadbalancer.server.port=3001"
+      - "traefik.http.middlewares.chatbot-root-redirect.redirectregex.regex=^https?://chatbot\\.hneemias\\.cloud/?$$"
+      - "traefik.http.middlewares.chatbot-root-redirect.redirectregex.replacement=https://chatbot.hneemias.cloud/painel"
+      - "traefik.http.middlewares.chatbot-root-redirect.redirectregex.permanent=false"
+      - "traefik.http.routers.chatbot-root.rule=Host(`chatbot.hneemias.cloud`) && Path(`/`)"
+      - "traefik.http.routers.chatbot-root.entrypoints=https"
+      - "traefik.http.routers.chatbot-root.tls=true"
+      - "traefik.http.routers.chatbot-root.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.chatbot-root.middlewares=chatbot-root-redirect"
+      - "traefik.http.routers.chatbot-root.service=chatbot-panel"
 
 volumes:
   redis_data:
+
+networks:
+  default:
+  coolify:
+    external: true

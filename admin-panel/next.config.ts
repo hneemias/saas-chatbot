@@ -8,6 +8,7 @@ const adminRoot = fs.existsSync(path.join(candidateSubdir, "package.json"))
   : process.cwd();
 
 const nextConfig: NextConfig = {
+  basePath: "/painel",
   output: "standalone",
   outputFileTracingRoot: adminRoot,
   turbopack: {
