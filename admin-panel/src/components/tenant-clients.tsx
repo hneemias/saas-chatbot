@@ -1086,7 +1086,10 @@ export function TenantClients({
                                                             }`}
                                                         >
                                                             <div className="flex items-center justify-between gap-4 opacity-75 text-[10px] font-bold">
-                                                                <span>
+                                                                <span className="inline-flex items-center gap-1">
+                                                                    {m.message_type === "audio" && (
+                                                                        <Volume2 className="size-3" title="Mensagem de Voz / Áudio" />
+                                                                    )}
                                                                     {isClient
                                                                         ? selectedClient.name || "Cliente"
                                                                         : isAdmin

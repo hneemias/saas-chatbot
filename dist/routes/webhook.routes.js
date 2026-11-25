@@ -188,10 +188,11 @@ webhookRouter.post('/evolution', async (req, res) => {
                     });
                     if (!reply)
                         return;
-                    // SE O ADMIN ENVIOU ÁUDIO -> RESPONDE POR VOZ VIA TTS
+                    const cleanReply = reply.replace(/^\[.*?\]:?\s*/gi, '').trim();
+                    // SE O ADMIN ENVIOU ÁUDIO -> RESPONDE POR VOZ VIA TTS (VOZ MASCULINA: ATLAS)
                     if (isAudio) {
                         logger.info({ admin: teamMember.name }, 'Gerando resposta em áudio (TTS) para o administrador');
-                        const audioBase64 = await ttsService.generateSpeechBase64(reply, 'pt-BR-AntonioNeural');
+                        const audioBase64 = await ttsService.generateSpeechBase64(cleanReply, 'pt-BR-AntonioNeural');
                         if (audioBase64) {
                             await evolutionApi.sendAudioMessage({
                                 instanceName: tenant.evolution_instance_name,
@@ -203,7 +204,7 @@ webhookRouter.post('/evolution', async (req, res) => {
                                 tenant_id: tenant.id,
                                 phone: remoteJid,
                                 role: 'assistant',
-                                content: `[Áudio de Resposta]: ${reply}`,
+                                content: cleanReply,
                                 message_type: 'audio',
                             });
                             return;
@@ -213,14 +214,14 @@ webhookRouter.post('/evolution', async (req, res) => {
                     await evolutionApi.sendTextMessage({
                         instanceName: tenant.evolution_instance_name,
                         remoteJid,
-                        text: reply,
+                        text: cleanReply,
                         apiKey: tenant.evolution_api_key,
                     });
                     await messageService.logMessage({
                         tenant_id: tenant.id,
                         phone: remoteJid,
                         role: 'assistant',
-                        content: reply,
+                        content: cleanReply,
                         message_type: 'text',
                     });
                 }
@@ -315,6 +316,7 @@ webhookRouter.post('/evolution', async (req, res) => {
                 });
                 if (!aiReply || aiReply.trim() === '')
                     return;
+                const cleanAiReply = aiReply.replace(/^\[.*?\]:?\s*/gi, '').trim();
                 // Configuração do formato de resposta para este cliente:
                 // 'auto' = De acordo com o que o cliente enviar (áudio -> áudio, texto -> texto)
                 // 'always_voice' = Sempre responder por áudio/voz
@@ -323,8 +325,9 @@ webhookRouter.post('/evolution', async (req, res) => {
                 const shouldRespondVoice = voiceMode === 'always_voice' ||
                     (voiceMode === 'auto' && isAudio);
                 if (shouldRespondVoice) {
-                    logger.info({ client: client.name || client.phone, voiceMode, isAudio }, 'Sintetizando resposta em áudio (TTS) para o cliente...');
-                    const audioBase64 = await ttsService.generateSpeechBase64(aiReply, 'pt-BR-FranciscaNeural');
+                    logger.info({ client: client.name || client.phone, voiceMode, isAudio }, 'Sintetizando resposta em áudio (TTS) feminina para o cliente...');
+                    // VOZ FEMININA BRASILEIRA NATURAL PARA CLIENTES
+                    const audioBase64 = await ttsService.generateSpeechBase64(cleanAiReply, 'pt-BR-FranciscaNeural');
                     if (audioBase64) {
                         await evolutionApi.sendAudioMessage({
                             instanceName: tenant.evolution_instance_name,
@@ -337,13 +340,13 @@ webhookRouter.post('/evolution', async (req, res) => {
                             client_id: client.id,
                             phone: remoteJid,
                             role: 'assistant',
-                            content: `[Áudio de Resposta]: ${aiReply}`,
+                            content: cleanAiReply,
                             message_type: 'audio',
                         });
                         return;
                     }
                 }
-                const chunks = agentService.splitIntoChunks(aiReply);
+                const chunks = agentService.splitIntoChunks(cleanAiReply);
                 for (const chunk of chunks) {
                     await evolutionApi.sendTextMessage({
                         instanceName: tenant.evolution_instance_name,
