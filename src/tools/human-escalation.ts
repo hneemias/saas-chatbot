@@ -1,6 +1,6 @@
 import { SchemaType } from '@google/generative-ai';
 import { clientService } from '../services/client.service.js';
-import { evolutionApi } from '../integrations/evolution.js';
+import { notificationQueue } from '../services/notification-queue.service.js';
 import { ToolContext } from '../types/index.js';
 import { AgentTool } from './types.js';
 import { logger } from '../utils/logger.js';
@@ -14,7 +14,7 @@ export const humanEscalationTool: AgentTool = {
       properties: {
         reason: {
           type: SchemaType.STRING,
-          description: 'Motivo detalhado do escalonamento humano.',
+          description: 'Descreva objetivamente apenas o motivo do pedido ou irritação. NUNCA cite o número ou final do telefone nem links.',
         },
       },
       required: ['reason'],
@@ -41,26 +41,19 @@ export const humanEscalationTool: AgentTool = {
     // 1. Pausa o cliente no banco
     await clientService.setStatus(context.phone, context.tenantId, 'paused');
 
-    // 2. Alerta o grupo da equipe via WhatsApp se houver notification_group_id
+    // 2. Alerta o grupo da equipe via WhatsApp através da fila inteligente com debounce
     if (context.notificationGroupId) {
-      const cleanPhone = context.phone.replace(/@(s\.whatsapp\.net|lid)$/i, '');
-      const clientLabel = context.clientName || cleanPhone;
-      const alertMsg = `🚨 *ALERTA DE ATENDIMENTO HUMANO*\n\n` +
-        `👤 *Cliente:* ${clientLabel}\n` +
-        `📱 *Tel:* ${cleanPhone}\n\n` +
-        `*Motivo:* ${args.reason || 'Solicitação de atendimento humano'}\n\n` +
-        `Link direto: wa.me/${cleanPhone}`;
-
-      try {
-        await evolutionApi.sendTextMessage({
-          instanceName: context.instanceName,
-          remoteJid: context.notificationGroupId,
-          text: alertMsg,
-          apiKey: context.evolutionApiKey,
-        });
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'Falha ao enviar alerta de escalonamento para o grupo');
-      }
+      notificationQueue.enqueue({
+        type: 'human_escalation',
+        tenantId: context.tenantId,
+        instanceName: context.instanceName,
+        evolutionApiKey: context.evolutionApiKey,
+        notificationGroupId: context.notificationGroupId,
+        phone: context.phone,
+        clientName: context.clientName,
+        reason: args.reason || 'Solicitação de atendimento humano',
+        timestamp: Date.now(),
+      });
     }
 
     return {
