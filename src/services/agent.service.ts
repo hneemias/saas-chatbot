@@ -71,10 +71,14 @@ export class AgentService {
         { timeout: 20000 }
       );
 
-      const chat = model.startChat({ history });
+      // Monta histórico inicial no formato de conteúdos nativos do Gemini
+      const currentContents: any[] = [
+        ...history,
+        { role: 'user', parts: [{ text: effectiveUserMessage }] },
+      ];
 
       try {
-        let result = await chat.sendMessage(effectiveUserMessage);
+        let result = await model.generateContent({ contents: currentContents });
         let response = result.response;
 
         // Loop de execução de ferramentas (Tool Calling)
@@ -84,6 +88,10 @@ export class AgentService {
         while (response.functionCalls() && response.functionCalls()!.length > 0 && iterations < MAX_ITERATIONS) {
           iterations++;
           const functionCalls = response.functionCalls()!;
+          const candidateContent = response.candidates?.[0]?.content;
+          if (candidateContent) {
+            currentContents.push(candidateContent);
+          }
 
           const functionResponses = await Promise.all(
             functionCalls.map(async (call) => {
@@ -110,8 +118,13 @@ export class AgentService {
             })
           );
 
-          // Devolve todos os resultados das tools em paralelo para o Gemini continuar gerando a resposta
-          result = await chat.sendMessage(functionResponses);
+          // No Gemini 2.x e 3.x, a resposta da tool é enviada com role: 'user'
+          currentContents.push({
+            role: 'user',
+            parts: functionResponses,
+          });
+
+          result = await model.generateContent({ contents: currentContents });
           response = result.response;
         }
 

@@ -24,8 +24,8 @@ const envSchema = z.object({
 
   // Gemini AI
   GEMINI_API_KEY: z.string().min(1).default('sua_gemini_key'),
-  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
-  GEMINI_FALLBACK_MODEL: z.string().default('gemini-3.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-flash-lite-latest'),
+  GEMINI_FALLBACK_MODEL: z.string().default('gemini-3.5-flash-lite'),
   GEMINI_EMBEDDING_MODEL: z.string().default('gemini-embedding-001'),
   GEMINI_EMBEDDING_DIMENSIONS: z.string().default('1536').transform((v) => parseInt(v, 10)),
 
