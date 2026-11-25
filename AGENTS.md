@@ -15,3 +15,10 @@
 ## 2. Padrões Técnicos do Repositório
 - Nos prompts de IA (`tenant_configs`), usar variáveis de identidade (`{{ agent_name }}`, `{{ external_agent_name }}`, `{{ internal_agent_name }}`, `{{ tenant_name }}`) em vez de nomes fixos.
 - Nunca gravar arquivos `.env` / `.env.local` com UTF-8 BOM no Windows.
+
+## 3. Estratégia de Build e Deploy em Docker (Evitar OOM e Builds Lentos na VPS)
+- **Preferência por Imagens de Runtime com build local pré-compilado (`dist/`):**
+  - Salvo quando for estritamente obrigatório compilar dentro da hospedagem, SEMPRE preferir compilar localmente (`npm run build`) e versionar os arquivos compilados (`dist/`).
+  - O container Docker deve funcionar como imagem de execução leve (instalando apenas dependências de produção com `npm ci --omit=dev` e copiando o `dist/` pré-compilado).
+  - O diretório `dist` NUNCA deve ser bloqueado no `.dockerignore` quando esse padrão estiver ativo.
+  - **Motivo:** Evita consumo excessivo de RAM/CPU na VPS durante o deploy (risco de OOM Kill pelo kernel) e reduz o tempo de deploy de minutos para segundos (<15s).
