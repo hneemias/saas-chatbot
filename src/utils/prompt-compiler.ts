@@ -124,8 +124,10 @@ export function compileSystemPrompt(
     .replace(/\{\{\s*client_memory\s*\}\}/gi, memorySummary || 'Nenhuma memória anterior registrada.');
 
   // 3. Anexa automaticamente o envelope dinâmico `<session_context>` no final da instrução
-  // (Mantém o prefixo estático intacto no topo para maximizar o Cache Implícito do Gemini)
-  if (appendSessionContext && !result.includes('<session_context>')) {
+  // Só considera existente se o bloco estiver fechado com `</session_context>`, evitando falsos positivos
+  // quando o corpo do prompt apenas cita "<session_context>" como texto de instrução.
+  const hasSessionContextBlock = result.includes('</session_context>');
+  if (appendSessionContext && !hasSessionContextBlock) {
     if (mode === 'internal') {
       const lines = [
         '',
@@ -139,15 +141,23 @@ export function compileSystemPrompt(
       ];
       result += `\n${lines.join('\n')}`;
     } else {
+      const isKnownName = clientName && clientName.trim() !== '' && clientName.toLowerCase() !== 'desconhecido';
+      const firstName = isKnownName ? clientName.trim().split(/\s+/)[0] : '';
+      const nameDirective = isKnownName
+        ? `Você está conversando com ${clientName}. Trate-o(a) cordialmente pelo primeiro nome ("${firstName}") com naturalidade e acolhimento. Não pergunte o nome novamente, pois já está identificado no sistema.`
+        : `O nome do cliente ainda não está registrado (identificado como "Desconhecido"). Trate cordialmente e, quando for oportuno na conversa, pergunte como pode chamá-lo(a) e salve com \`save_client_name\`.`;
+
       const lines = [
         '',
         '<session_context>',
         `- Data e Hora Atual (Brasília): ${todayDate} (${dayOfWeek}) às ${currentTime}`,
         `- Empresa / Organização: ${tenantName}`,
         `- Assistente Responsável: ${externalAgentName}`,
-        `- Telefone / WhatsApp do Cliente: ${phone || 'Não informado'}`,
-        `- Nome Registrado do Cliente: ${clientName}`,
-        `- Status Atual do Atendimento: ${clientStatus}`,
+        `- Interlocutor Atual (Cliente no WhatsApp):`,
+        `  • Nome Registrado: ${clientName || 'Desconhecido'}`,
+        `  • Telefone / WhatsApp: ${phone || 'Não informado'}`,
+        `  • Status Atual do Atendimento: ${clientStatus}`,
+        `  • Instrução Obrigatória de Identificação: ${nameDirective}`,
       ];
 
       if (memorySummary) {
@@ -160,7 +170,7 @@ export function compileSystemPrompt(
       lines.push(
         `- Diretrizes Automáticas de Formatação e Estado:\n` +
           `  • Formatação no WhatsApp: use APENAS UM asterisco para negrito (*negrito*). NUNCA use asteriscos duplos (**negrito**) e NUNCA dobre aspas (""destaque"").\n` +
-          `  • Se "Nome Registrado do Cliente" for "Desconhecido" e o cliente informar o nome, acione \`save_client_name\` imediatamente.\n` +
+          `  • Se "Nome Registrado" for "Desconhecido" e o cliente informar o nome, acione \`save_client_name\` imediatamente.\n` +
           `  • Se houver documentos liberados acima relacionados à pergunta do cliente, consulte \`search_knowledge_base\` antes de responder.\n` +
           `  • Se "Status Atual do Atendimento" for \`triagem_concluida\` ou \`converted\`, NÃO acione \`convert_lead\` novamente para o mesmo assunto.`
       );
