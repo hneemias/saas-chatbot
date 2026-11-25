@@ -103,9 +103,9 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         tenant_id: tenant.id,
         client_id: client.id,
         phone: remoteJid,
-        role: 'admin', // Intervenção humana registrada como atendente/admin (nunca como 'user')
+        role: 'assistant', // Atendente humano falando pelo canal oficial (compatível com constraints SQL)
         content: rawOutText || '[Mensagem do Atendente]',
-        message_type: messageType,
+        message_type: 'admin',
       });
 
       return;
@@ -188,8 +188,8 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
 
       // 4.2 Execução do AGENTE INTERNO (Atlas / Assistente Administrativo)
       await debounceService.bufferMessage(debounceScopeKey, messageText, async (fullText) => {
-        // Busca histórico ANTES de gravar a mensagem atual para não duplicar no contexto multi-turn do Gemini
-        const history = await messageService.getRecentHistory(remoteJid, tenant.id, 14);
+        // Busca histórico INTERNO (client_id IS NULL) para nunca misturar com eventuais atendimentos de cliente
+        const history = await messageService.getRecentHistory(remoteJid, tenant.id, 14, { scope: 'internal' });
         const historyFormatted = messageService.formatHistoryForAgent(
           history,
           config.internal_agent_name || 'Atlas',
@@ -200,9 +200,9 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         await messageService.logMessage({
           tenant_id: tenant.id,
           phone: remoteJid,
-          role: 'admin',
+          role: 'user', // Membro da equipe é o emissor humano no diálogo com o Atlas
           content: fullText,
-          message_type: messageType,
+          message_type: 'admin',
         });
 
         const context = {
@@ -311,7 +311,7 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
     await debounceService.bufferMessage(debounceScopeKey, messageText, async (fullMessage) => {
       // Busca histórico anterior e índice de documentos liberados ANTES de gravar a nova mensagem
       const [history, clientDocumentsIndex] = await Promise.all([
-        messageService.getRecentHistory(remoteJid, tenant.id, 16),
+        messageService.getRecentHistory(remoteJid, tenant.id, 16, { scope: 'client', clientId: client.id }),
         ragService.getClientSharedDocumentsIndex(tenant.id, client.id),
       ]);
 

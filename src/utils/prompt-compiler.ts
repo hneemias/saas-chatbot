@@ -136,6 +136,7 @@ export function compileSystemPrompt(
         `- Empresa / Organização: ${tenantName}`,
         `- Copiloto Interno Ativo: ${internalAgentName} (Assistente Externa de Clientes: ${externalAgentName})`,
         `- Membro da Equipe Autenticado: ${adminName} (Cargo: ${adminRole}${phone ? ` | WhatsApp: ${phone}` : ''})`,
+        `- DIRETRIZ CRÍTICA DE IDENTIDADE: Você é ${internalAgentName}, o copiloto da EQUIPE INTERNA da ${tenantName}. Você está dialogando diretamente com ${adminName}, membro da equipe/gestão. NUNCA trate ${adminName} como cliente comum, NUNCA diga que a equipe vai entrar em contato com ele e NUNCA peça para aguardar atendimento. Cumprimente-o cordialmente pelo nome e atue como assistente de apoio operacional aos técnicos e à administração.`,
         `- Diretriz de Formatação (WhatsApp): use APENAS UM asterisco para negrito (*negrito*). NUNCA use asteriscos duplos (**negrito**) e NUNCA dobre aspas (""destaque"").`,
         '</session_context>',
       ];
@@ -168,12 +169,16 @@ export function compileSystemPrompt(
 
       lines.push(`- Documentos e Atualizações Liberados no Dossiê deste Cliente:\n${docsIndex}`);
       lines.push(
-        `- Diretrizes Automáticas de Formatação e Estado:\n` +
+        `- Diretrizes Automáticas de Formatação, Estado e Anti-Repetição:\n` +
           `  • Formatação no WhatsApp: use APENAS UM asterisco para negrito (*negrito*). NUNCA use asteriscos duplos (**negrito**) e NUNCA dobre aspas (""destaque"").\n` +
           `  • ANÁLISE COGNITIVA DO NOME: Avalie criticamente se o interlocutor possui um nome humano pessoal real. Se parecer slogan de fé, frase afetiva ou comércio, trate como Desconhecido e pergunte gentilmente como prefere ser chamado.\n` +
           `  • Se "Nome Registrado" for "Desconhecido" e o cliente informar o nome, acione \`save_client_name\` imediatamente.\n` +
           `  • Se houver documentos liberados acima relacionados à pergunta do cliente, consulte \`search_knowledge_base\` antes de responder.\n` +
-          `  • Se "Status Atual do Atendimento" for \`triagem_concluida\` ou \`converted\`, NÃO acione \`convert_lead\` novamente para o mesmo assunto.`
+          `  • Se "Status Atual do Atendimento" for \`triagem_concluida\` ou \`converted\`:\n` +
+          `    - Se o cliente enviar apenas saudações ("Oi", "Olá", "Boa tarde", "Tudo bem?"), cumprimente-o de volta cordialmente pelo nome e pergunte com naturalidade como pode ajudá-lo agora, SEM repetir mensagens prontas de espera como "nossa equipe já foi alertada" ou "logo alguém vai falar com você".\n` +
+          `    - Se o cliente perguntar sobre produtos, preços, catálogo, serviços, dúvidas ou outro assunto, ATENDA-O NORMALMENTE com presteza e agilidade. NÃO o corte e NÃO repita que ele deve esperar.\n` +
+          `    - Apenas reforce que a equipe está ciente se o cliente expressamente cobrar o retorno ou perguntar sobre o atendente (ex: "e aí, ninguém vai falar comigo?", "cadê o atendente?").\n` +
+          `    - NÃO acione \`convert_lead\` novamente para o mesmo assunto já registrado.`
       );
       lines.push('</session_context>');
 

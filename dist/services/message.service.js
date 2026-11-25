@@ -5,13 +5,20 @@ export class MessageService {
     async logMessage(record) {
         try {
             const normalizedPhone = normalizeWhatsAppJid(record.phone);
+            // Garante conformidade estrita com o check constraint do Supabase (role IN ('user', 'assistant', 'system'))
+            let role = record.role;
+            let messageType = record.message_type || 'text';
+            if (role === 'admin') {
+                role = record.client_id ? 'assistant' : 'user';
+                messageType = 'admin';
+            }
             const { error } = await supabase.from('messages').insert({
                 tenant_id: record.tenant_id,
                 client_id: record.client_id || null,
                 phone: normalizedPhone,
-                role: record.role,
+                role,
                 content: record.content,
-                message_type: record.message_type || 'text',
+                message_type: messageType,
                 created_at: record.created_at || new Date().toISOString(),
             });
             if (error) {
@@ -22,16 +29,25 @@ export class MessageService {
             logger.error({ err: err.message, phone: record.phone }, 'Exceção ao gravar mensagem');
         }
     }
-    async getRecentHistory(rawPhone, tenantId, limit = 16) {
+    async getRecentHistory(rawPhone, tenantId, limit = 16, options) {
         try {
             const jidVariants = getEquivalentPhoneJids(rawPhone);
-            const { data, error } = await supabase
+            let query = supabase
                 .from('messages')
                 .select('*')
                 .in('phone', jidVariants)
                 .eq('tenant_id', tenantId)
                 .order('created_at', { ascending: false })
                 .limit(limit);
+            if (options?.scope === 'internal') {
+                // Modo Equipe Interna (Atlas): busca apenas mensagens de equipe (client_id IS NULL),
+                // impedindo contaminação com conversas antigas de quando o número foi atendido como cliente.
+                query = query.is('client_id', null);
+            }
+            else if (options?.scope === 'client' && options?.clientId) {
+                query = query.eq('client_id', options.clientId);
+            }
+            const { data, error } = await query;
             if (error || !data) {
                 return [];
             }
@@ -56,15 +72,15 @@ export class MessageService {
             let mappedRole;
             let mappedText = rawText;
             if (mode === 'internal') {
-                // No modo Atlas (equipe interna), o advogado/admin é o 'user' e o Atlas é 'model'
+                // No modo Atlas (equipe interna), o interlocutor da equipe é o 'user' e o Atlas é 'model'
                 mappedRole = msg.role === 'assistant' ? 'model' : 'user';
             }
             else {
                 // No modo Externo (clientes), o cliente é 'user'; IA e intervenções humanas do escritório são 'model'
-                if (msg.role === 'user') {
+                if (msg.role === 'user' && msg.message_type !== 'admin') {
                     mappedRole = 'user';
                 }
-                else if (msg.role === 'admin') {
+                else if (msg.role === 'admin' || msg.message_type === 'admin') {
                     mappedRole = 'model';
                     mappedText = `[Atendente Humano da Equipe]: ${rawText}`;
                 }
@@ -124,10 +140,10 @@ export class MessageService {
                 speaker = msg.role === 'assistant' ? agentName : userLabel;
             }
             else {
-                if (msg.role === 'user') {
+                if (msg.role === 'user' && msg.message_type !== 'admin') {
                     speaker = userLabel;
                 }
-                else if (msg.role === 'admin') {
+                else if (msg.role === 'admin' || msg.message_type === 'admin') {
                     speaker = 'Atendente Humano';
                 }
                 else {

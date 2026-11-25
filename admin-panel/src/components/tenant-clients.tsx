@@ -1006,8 +1006,8 @@ export function TenantClients({
                                             </p>
                                         ) : (
                                             drawerMessages.map((m) => {
-                                                const isClient = m.role === "user";
-                                                const isAdmin = m.role === "admin";
+                                                const isClient = m.role === "user" && m.message_type !== "admin";
+                                                const isAdmin = m.role === "admin" || m.message_type === "admin";
                                                 return (
                                                     <div
                                                         key={m.id}
