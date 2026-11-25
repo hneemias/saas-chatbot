@@ -126,6 +126,7 @@ export interface ToolContext {
   phone: string;
   clientId?: string;
   clientName?: string;
+  userMessage?: string;
   historyFormatted?: string;
   isInternalTeam?: boolean;
 }

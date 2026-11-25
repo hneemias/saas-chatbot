@@ -366,6 +366,7 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         phone: remoteJid,
         clientId: client.id,
         clientName: effectiveClientName,
+        userMessage: fullMessage,
         historyFormatted,
         isInternalTeam: false,
       };

@@ -300,6 +300,7 @@ webhookRouter.post('/evolution', async (req, res) => {
                 phone: remoteJid,
                 clientId: client.id,
                 clientName: effectiveClientName,
+                userMessage: fullMessage,
                 historyFormatted,
                 isInternalTeam: false,
             };
