@@ -5,8 +5,10 @@ FROM node:22-alpine AS deps
 
 WORKDIR /app
 
+ENV NODE_ENV=development
+
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 # ==============================================================================
 # Stage 2: Build Next.js 16 Standalone
