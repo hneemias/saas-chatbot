@@ -202,12 +202,20 @@ export function TenantsTableClient({ tenants }: { tenants: any[] }) {
                                             </span>
                                         </div>
                                         <div className="flex flex-wrap items-center gap-2.5 mt-1 text-xs text-zinc-500">
-                                            <span className="font-mono text-[11px] bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-md border border-zinc-200/70">
-                                                {tenant.evolution_instance_name}
-                                            </span>
-                                            {renderEvoBadge(
-                                                tenant.evolution_status,
-                                                tenant.evolution_error
+                                            {tenant.evolution_instance_name?.startsWith("pendente_") ? (
+                                                <span className="text-[11px] font-medium bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md border border-amber-200">
+                                                    Sem WhatsApp vinculado
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <span className="font-mono text-[11px] bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-md border border-zinc-200/70">
+                                                        {tenant.evolution_instance_name}
+                                                    </span>
+                                                    {renderEvoBadge(
+                                                        tenant.evolution_status,
+                                                        tenant.evolution_error
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                     </div>

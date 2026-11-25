@@ -44,15 +44,16 @@ export async function createTenant(_prevState: any, formData: FormData) {
     const supabase = createAdminClient();
 
     const name = ((formData.get("name") as string) || "").trim();
-    const instanceName = ((formData.get("instanceName") as string) || "").trim();
+    const rawInstanceName = ((formData.get("instanceName") as string) || "").trim();
     const apiKey = ((formData.get("apiKey") as string) || "").trim();
     const enableCatalog = formData.get("enableCatalog") === "on";
 
-    if (!name || !instanceName) {
-        return { message: "Nome e Instância são obrigatórios.", errors: {} };
+    if (!name) {
+        return { message: "O nome da empresa é obrigatório.", errors: {} };
     }
 
     const slug = `${convertToKebabCase(name)}-${Math.random().toString(36).slice(2, 6)}`;
+    const instanceName = rawInstanceName || `pendente_${slug}`;
 
     const { data: tenant, error: tenantError } = await supabase
         .from("tenants")
@@ -113,19 +114,33 @@ export async function updateTenant(tenantId: string, _prevState: any, formData: 
     const supabase = createAdminClient();
 
     const name = ((formData.get("name") as string) || "").trim();
-    const instanceName = ((formData.get("instanceName") as string) || "").trim();
+    const rawInstanceName = ((formData.get("instanceName") as string) || "").trim();
     const apiKey = ((formData.get("apiKey") as string) || "").trim();
     const enableCatalog = formData.get("enableCatalog") === "on";
 
-    if (!name || !instanceName) {
-        return { message: "Nome e Instância são obrigatórios." };
+    if (!name) {
+        return { message: "O nome da empresa é obrigatório." };
+    }
+
+    let instanceNameToSave = rawInstanceName;
+    if (!instanceNameToSave) {
+        const { data: existingTenant } = await supabase
+            .from("tenants")
+            .select("evolution_instance_name, slug")
+            .eq("id", tenantId)
+            .single();
+
+        instanceNameToSave =
+            existingTenant?.evolution_instance_name && existingTenant.evolution_instance_name.startsWith("pendente_")
+                ? existingTenant.evolution_instance_name
+                : `pendente_${existingTenant?.slug || Math.random().toString(36).slice(2, 6)}`;
     }
 
     const { error } = await supabase
         .from("tenants")
         .update({
             name,
-            evolution_instance_name: instanceName,
+            evolution_instance_name: instanceNameToSave,
             evolution_api_key: apiKey || null,
             updated_at: new Date().toISOString(),
         })
@@ -523,6 +538,55 @@ export async function toggleKnowledgeDocumentVisibility(params: {
     }
 
     revalidatePath(`/tenants/${params.tenantId}`);
+    return { success: true };
+}
+
+export async function updateKnowledgeDocument(payload: {
+    tenantId: string;
+    docId: string;
+    docTitle?: string;
+    content?: string;
+    visibleToClient?: boolean;
+    category?: string;
+}) {
+    await requireAdminSession();
+    const supabase = createAdminClient();
+
+    const body: Record<string, any> = {
+        tenantId: payload.tenantId,
+    };
+    if (payload.docTitle !== undefined) body.docTitle = payload.docTitle.trim();
+    if (payload.content !== undefined) body.content = payload.content.trim();
+    if (payload.visibleToClient !== undefined) body.visibleToClient = payload.visibleToClient;
+    if (payload.category !== undefined) body.metadata = { category: payload.category.trim() };
+
+    const apiRes = await backendFetchJson<{ success: boolean; data: any }>(
+        `/api/knowledge/${payload.docId}`,
+        {
+            method: "PUT",
+            body: JSON.stringify(body),
+        }
+    );
+
+    if (!apiRes.ok) {
+        // Fallback direto no Supabase caso o backend esteja offline
+        const updates: Record<string, any> = {
+            updated_at: new Date().toISOString(),
+        };
+        if (payload.docTitle !== undefined) updates.doc_title = payload.docTitle.trim();
+        if (payload.content !== undefined) updates.content = payload.content.trim();
+        if (payload.visibleToClient !== undefined) updates.visible_to_client = payload.visibleToClient;
+
+        const { error } = await supabase
+            .from("knowledge_base")
+            .update(updates)
+            .eq("tenant_id", payload.tenantId)
+            .eq("id", payload.docId);
+
+        if (error) return { error: error.message };
+    }
+
+    revalidatePath(`/tenants/${payload.tenantId}`);
     return { success: true };
 }
 
@@ -1644,4 +1708,38 @@ export async function getTenantEvolution(tenantId: string) {
             };
         })
     );
+}
+
+// ============================================================================
+// 10. ASSISTENTE DE GERAÇÃO & OTIMIZAÇÃO DE PROMPT COM IA
+// ============================================================================
+
+export async function generatePromptWithAI(params: {
+    tenantId: string;
+    agentType: "external" | "internal";
+    briefing: string;
+    useKnowledgeBase?: boolean;
+    currentPrompt?: string;
+}): Promise<{ success: boolean; prompt?: string; error?: string }> {
+    await requireAdminSession();
+
+    const apiRes = await backendFetchJson<{ success: boolean; prompt: string }>(
+        "/api/agents/generate-prompt",
+        {
+            method: "POST",
+            body: JSON.stringify(params),
+        }
+    );
+
+    if (!apiRes.ok || !apiRes.data?.prompt) {
+        return {
+            success: false,
+            error: apiRes.error || "Falha ao gerar prompt com IA. Verifique se o servidor backend está online.",
+        };
+    }
+
+    return {
+        success: true,
+        prompt: apiRes.data.prompt,
+    };
 }

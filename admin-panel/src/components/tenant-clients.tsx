@@ -7,6 +7,7 @@ import {
     updateClientMemorySummary,
     getClientDrawerDetails,
     createKnowledgeDocument,
+    updateKnowledgeDocument,
     toggleKnowledgeDocumentVisibility,
     deleteKnowledgeDocument,
 } from "@/app/actions";
@@ -39,6 +40,9 @@ import {
     Pencil,
     Check,
     X,
+    ChevronDown,
+    ChevronUp,
+    Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -86,6 +90,71 @@ export function TenantClients({
     const [docTitle, setDocTitle] = useState("");
     const [docContent, setDocContent] = useState("");
     const [docVisible, setDocVisible] = useState(false); // Nasce privado por segurança!
+
+    // Controle de expansão e edição de documentos do cliente (default: todos colapsados)
+    const [expandedDocIds, setExpandedDocIds] = useState<Set<string>>(new Set());
+    const [editingDocId, setEditingDocId] = useState<string | null>(null);
+    const [editDocTitle, setEditDocTitle] = useState("");
+    const [editDocContent, setEditDocContent] = useState("");
+    const [editDocVisible, setEditDocVisible] = useState(false);
+
+    const toggleExpandDoc = (groupId: string) => {
+        setExpandedDocIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(groupId)) next.delete(groupId);
+            else next.add(groupId);
+            return next;
+        });
+    };
+
+    const handleStartEditDoc = (doc: { id: string; title: string; preview: string; visibleToClient: boolean }) => {
+        setEditingDocId(doc.id);
+        setEditDocTitle(doc.title);
+        setEditDocContent(doc.preview);
+        setEditDocVisible(doc.visibleToClient);
+    };
+
+    const handleCancelEditDoc = () => {
+        setEditingDocId(null);
+        setEditDocTitle("");
+        setEditDocContent("");
+    };
+
+    const handleSaveEditDoc = async (docId: string) => {
+        if (!editDocTitle.trim() || !editDocContent.trim()) {
+            toast.error("Título e conteúdo são obrigatórios.");
+            return;
+        }
+
+        startTransition(async () => {
+            const res = await updateKnowledgeDocument({
+                tenantId,
+                docId,
+                docTitle: editDocTitle,
+                content: editDocContent,
+                visibleToClient: editDocVisible,
+            });
+
+            if (res.success) {
+                toast.success("Documento atualizado com sucesso!");
+                setDrawerDocs((prev) =>
+                    prev.map((d) =>
+                        d.id === docId
+                            ? {
+                                  ...d,
+                                  doc_title: editDocTitle,
+                                  content: editDocContent,
+                                  visible_to_client: editDocVisible,
+                              }
+                            : d
+                    )
+                );
+                setEditingDocId(null);
+            } else {
+                toast.error("Erro ao atualizar documento: " + (res.error || "Tente novamente."));
+            }
+        });
+    };
 
     const filteredClients = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -759,51 +828,148 @@ export function TenantClients({
                                                     Nenhum documento individual anexado a este cliente ainda.
                                                 </p>
                                             ) : (
-                                                groupedDrawerDocs.map((doc) => (
-                                                    <div
-                                                        key={doc.groupId}
-                                                        className="rounded-xl border border-slate-200 bg-white p-4 space-y-2"
-                                                    >
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <div className="flex flex-wrap items-center gap-2">
-                                                                <span className="font-bold text-slate-900 text-xs">
-                                                                    {doc.title}
-                                                                </span>
-                                                                {doc.visibleToClient ? (
-                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                                        <Eye className="size-3" /> Liberado ao Cliente
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                                                        <EyeOff className="size-3" /> Só Equipe
-                                                                    </span>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2">
-                                                                <Switch
-                                                                    checked={doc.visibleToClient}
-                                                                    onCheckedChange={(v) =>
-                                                                        handleToggleDocVisibility(doc.id, v)
-                                                                    }
-                                                                    disabled={isPending}
+                                                groupedDrawerDocs.map((doc) =>
+                                                    editingDocId === doc.id ? (
+                                                        <div
+                                                            key={doc.groupId}
+                                                            className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 space-y-3"
+                                                        >
+                                                            <div className="space-y-1.5">
+                                                                <Label className="text-xs font-semibold text-zinc-700">
+                                                                    Título do Documento
+                                                                </Label>
+                                                                <Input
+                                                                    value={editDocTitle}
+                                                                    onChange={(e) => setEditDocTitle(e.target.value)}
+                                                                    className="bg-white text-xs h-9"
                                                                 />
-                                                                <button
+                                                            </div>
+                                                            <div className="space-y-1.5">
+                                                                <Label className="text-xs font-semibold text-zinc-700">
+                                                                    Conteúdo do Documento
+                                                                </Label>
+                                                                <Textarea
+                                                                    value={editDocContent}
+                                                                    onChange={(e) => setEditDocContent(e.target.value)}
+                                                                    className="bg-white text-xs min-h-[120px] font-mono leading-relaxed"
+                                                                />
+                                                            </div>
+                                                            <div className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-lg border border-zinc-200">
+                                                                <span className="text-xs text-zinc-700 font-medium">
+                                                                    Liberar consulta pela assistente no WhatsApp?
+                                                                </span>
+                                                                <Switch
+                                                                    checked={editDocVisible}
+                                                                    onCheckedChange={setEditDocVisible}
+                                                                />
+                                                            </div>
+                                                            <div className="flex items-center justify-end gap-2 pt-1">
+                                                                <Button
                                                                     type="button"
-                                                                    onClick={() => handleDeleteClientDoc(doc.id)}
-                                                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50"
-                                                                    title="Remover documento"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={handleCancelEditDoc}
+                                                                    className="text-xs h-8"
                                                                 >
-                                                                    <Trash2 className="size-3.5" />
-                                                                </button>
+                                                                    Cancelar
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    disabled={isPending}
+                                                                    onClick={() => handleSaveEditDoc(doc.id)}
+                                                                    className="bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-dark)] text-white text-xs h-8"
+                                                                >
+                                                                    {isPending ? (
+                                                                        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                                                                    ) : (
+                                                                        <Save className="mr-1.5 size-3.5" />
+                                                                    )}
+                                                                    Salvar Alterações
+                                                                </Button>
                                                             </div>
                                                         </div>
+                                                    ) : (
+                                                        <div
+                                                            key={doc.groupId}
+                                                            className="rounded-xl border border-slate-200 bg-white p-4 space-y-2.5"
+                                                        >
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <span className="font-bold text-slate-900 text-xs">
+                                                                        {doc.title}
+                                                                    </span>
+                                                                    {doc.visibleToClient ? (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                            <Eye className="size-3" /> Liberado ao Cliente
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                                                            <EyeOff className="size-3" /> Só Equipe
+                                                                        </span>
+                                                                    )}
+                                                                </div>
 
-                                                        <p className="text-xs text-slate-600 whitespace-pre-line">
-                                                            {doc.preview}
-                                                        </p>
-                                                    </div>
-                                                ))
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Switch
+                                                                        checked={doc.visibleToClient}
+                                                                        onCheckedChange={(v) =>
+                                                                            handleToggleDocVisibility(doc.id, v)
+                                                                        }
+                                                                        disabled={isPending}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleStartEditDoc(doc)}
+                                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                                                                        title="Editar documento"
+                                                                    >
+                                                                        <Pencil className="size-3.5" />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleDeleteClientDoc(doc.id)}
+                                                                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                                                                        title="Remover documento"
+                                                                    >
+                                                                        <Trash2 className="size-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Conteúdo com Expand/Collapse (default: collapsed) */}
+                                                            {expandedDocIds.has(doc.groupId) ? (
+                                                                <div className="space-y-2">
+                                                                    <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/60 p-3 rounded-lg border border-slate-100">
+                                                                        {doc.preview}
+                                                                    </p>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleExpandDoc(doc.groupId)}
+                                                                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                                                                    >
+                                                                        <ChevronUp className="size-3" /> Recolher texto
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-1.5">
+                                                                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                                                                        {doc.preview}
+                                                                    </p>
+                                                                    {doc.preview && doc.preview.length > 80 && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => toggleExpandDoc(doc.groupId)}
+                                                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                                                                        >
+                                                                            <ChevronDown className="size-3" /> Ver conteúdo completo
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                )
                                             )}
                                         </div>
                                     </>

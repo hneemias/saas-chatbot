@@ -39,7 +39,15 @@ export function WhatsAppConnection({ instanceName, apiKey }: WhatsAppConnectionP
     const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
     const [savingWebhook, setSavingWebhook] = useState(false);
 
+    const isPendingInstance = !instanceName || instanceName.startsWith("pendente_");
+
     const checkStatus = async () => {
+        if (isPendingInstance) {
+            setStatus("unconfigured");
+            setLoading(false);
+            return;
+        }
+
         try {
             const [data, wh] = await Promise.all([
                 getEvolutionStatus(instanceName, apiKey),
@@ -134,7 +142,12 @@ export function WhatsAppConnection({ instanceName, apiKey }: WhatsAppConnectionP
                 <div className="space-y-1">
                     <h3 className="text-lg font-bold text-slate-900">Conexão WhatsApp & Webhook</h3>
                     <div className="flex items-center gap-2">
-                        {status === "open" ? (
+                        {isPendingInstance ? (
+                            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-50 border border-amber-200 text-amber-700">
+                                <span className="size-1.5 rounded-full bg-amber-400"></span>
+                                Pendente
+                            </span>
+                        ) : status === "open" ? (
                             <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-50 border border-emerald-200 text-emerald-700">
                                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                 Conectado
@@ -146,7 +159,7 @@ export function WhatsAppConnection({ instanceName, apiKey }: WhatsAppConnectionP
                             </span>
                         )}
                         <span className="text-[10px] text-slate-400 font-mono uppercase tracking-tight">
-                            Instância: {instanceName}
+                            {isPendingInstance ? "WhatsApp não vinculado" : `Instância: ${instanceName}`}
                         </span>
                     </div>
                 </div>
@@ -178,7 +191,21 @@ export function WhatsAppConnection({ instanceName, apiKey }: WhatsAppConnectionP
             </div>
 
             <div className="p-8 space-y-8 flex-1 overflow-auto">
-                {status !== "open" ? (
+                {isPendingInstance ? (
+                    <div className="max-w-xl mx-auto flex flex-col items-center justify-center p-10 border border-dashed border-amber-200 rounded-3xl bg-amber-50/40 text-center space-y-4">
+                        <div className="size-14 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700 shadow-xs">
+                            <Webhook className="size-7" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <h4 className="text-sm font-bold text-zinc-950">
+                                WhatsApp ainda não vinculado
+                            </h4>
+                            <p className="text-xs text-zinc-600 max-w-md leading-relaxed">
+                                Esta empresa foi criada sem uma instância vinculada da Evolution API. Você pode configurar os Agentes IA, o catálogo e a base de conhecimento primeiro. Quando a instância estiver ativa, informe o nome dela na aba <strong>Instância</strong> para conectar o QR Code.
+                            </p>
+                        </div>
+                    </div>
+                ) : status !== "open" ? (
                     <div className="max-w-2xl mx-auto flex flex-col items-center justify-center p-10 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 space-y-6">
                         {!qrBase64 ? (
                             <div className="text-center space-y-5 max-w-sm">

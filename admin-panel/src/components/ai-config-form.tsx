@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { updateAIConfig, getEvolutionGroups } from "@/app/actions";
+import { AIPromptAssistant } from "@/components/ai-prompt-assistant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -216,6 +217,19 @@ export function AIConfigForm({ tenantId, initialData }: AIConfigFormProps) {
                             />
                         </div>
 
+                        {/* Assistente Inteligente de Prompt com IA e RAG */}
+                        <AIPromptAssistant
+                            tenantId={tenantId}
+                            agentType="external"
+                            currentPrompt={formData.external_system_prompt}
+                            onApplyPrompt={(newPrompt) =>
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    external_system_prompt: newPrompt,
+                                }))
+                            }
+                        />
+
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <Label
@@ -271,6 +285,19 @@ export function AIConfigForm({ tenantId, initialData }: AIConfigFormProps) {
                                 placeholder="Ex: Atlas"
                             />
                         </div>
+
+                        {/* Assistente Inteligente de Prompt com IA e RAG */}
+                        <AIPromptAssistant
+                            tenantId={tenantId}
+                            agentType="internal"
+                            currentPrompt={formData.internal_system_prompt}
+                            onApplyPrompt={(newPrompt) =>
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    internal_system_prompt: newPrompt,
+                                }))
+                            }
+                        />
 
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">

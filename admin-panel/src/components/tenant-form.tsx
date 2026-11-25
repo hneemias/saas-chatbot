@@ -44,7 +44,9 @@ export function TenantForm({ tenantId, initialData }: TenantFormProps) {
     const [suggestions, setSuggestions] = useState<InstanceInfo[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [inputValue, setInputValue] = useState(
-        initialData?.evolution_instance_name || ""
+        initialData?.evolution_instance_name && !initialData.evolution_instance_name.startsWith("pendente_")
+            ? initialData.evolution_instance_name
+            : ""
     );
     const suggestionRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +128,7 @@ export function TenantForm({ tenantId, initialData }: TenantFormProps) {
                             htmlFor="instanceName"
                             className="text-xs font-semibold text-zinc-700"
                         >
-                            Nome da Instância (Evolution API)
+                            Nome da Instância WhatsApp (Opcional)
                         </Label>
                         <div className="relative">
                             <Hash className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
@@ -147,8 +149,7 @@ export function TenantForm({ tenantId, initialData }: TenantFormProps) {
                                     );
                                     setShowSuggestions(true);
                                 }}
-                                placeholder="Ex: atendimento_principal"
-                                required
+                                placeholder="Ex: atendimento_principal (ou deixe em branco)"
                                 autoComplete="off"
                                 className="h-10 pl-9 font-mono text-xs"
                             />

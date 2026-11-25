@@ -139,11 +139,17 @@ export default async function TenantDetailsPage({
                                             : "Inativo"}
                                     </span>
                                 </div>
-                                <p className="text-xs text-zinc-500 mt-0.5 font-mono">
-                                    Instância Evolution:{" "}
-                                    <span className="text-zinc-800 font-semibold">
-                                        {tenant.evolution_instance_name}
-                                    </span>
+                                <p className="text-xs text-zinc-500 mt-0.5">
+                                    Instância WhatsApp:{" "}
+                                    {tenant.evolution_instance_name?.startsWith("pendente_") ? (
+                                        <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5 font-medium text-[11px]">
+                                            Pendente de vinculação
+                                        </span>
+                                    ) : (
+                                        <span className="text-zinc-800 font-semibold font-mono">
+                                            {tenant.evolution_instance_name}
+                                        </span>
+                                    )}
                                 </p>
                             </div>
                         </div>

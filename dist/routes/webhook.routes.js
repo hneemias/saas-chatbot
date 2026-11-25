@@ -14,6 +14,7 @@ import { evolutionApi } from '../integrations/evolution.js';
 import { logger } from '../utils/logger.js';
 import { compileSystemPrompt } from '../utils/prompt-compiler.js';
 import { normalizeWhatsAppJid } from '../utils/phone.js';
+import { sanitizePushName } from '../utils/name-validator.js';
 export const webhookRouter = Router();
 webhookRouter.post('/evolution', async (req, res) => {
     // Responde imediatamente 200 OK para evitar retransmissões da Evolution API
@@ -81,7 +82,8 @@ webhookRouter.post('/evolution', async (req, res) => {
             });
             return;
         }
-        const pushName = body.data.pushName || 'Desconhecido';
+        // Sanitiza pushName descartando slogans religiosos, frases, homenagens, comércios e siglas
+        const pushName = sanitizePushName(body.data.pushName);
         const isAudio = messageType === 'audioMessage' || messageType === 'voiceMessage';
         // 3. EXTRAÇÃO OU TRANSCRIÇÃO DE ÁUDIO VIA GEMINI
         let messageText = body.data.message?.conversation ||
@@ -265,13 +267,14 @@ webhookRouter.post('/evolution', async (req, res) => {
             const externalAgentName = config.external_agent_name || 'Karol';
             const internalAgentName = config.internal_agent_name || 'Atlas';
             const clientMemorySummary = memoryService.extractClientMemory(client);
-            const historyFormatted = messageService.formatHistoryForAgent(history, externalAgentName, client.name || pushName, 'external');
+            const effectiveClientName = sanitizePushName(client.name && client.name !== 'Desconhecido' ? client.name : pushName);
+            const historyFormatted = messageService.formatHistoryForAgent(history, externalAgentName, effectiveClientName, 'external');
             const rawPrompt = config.external_system_prompt ||
                 'Você é {{ agent_name }}, assistente virtual de {{ tenant_name }}. Seja cordial, breve e objetiva.';
             const compiledPrompt = compileSystemPrompt(rawPrompt, {
                 mode: 'external',
                 tenantName: tenant.name,
-                clientName: client.name || pushName,
+                clientName: effectiveClientName,
                 clientStatus: client.status,
                 phone: remoteJid,
                 agentName: externalAgentName,
@@ -290,7 +293,7 @@ webhookRouter.post('/evolution', async (req, res) => {
                 notificationGroupId: config.notification_group_id,
                 phone: remoteJid,
                 clientId: client.id,
-                clientName: client.name || pushName,
+                clientName: effectiveClientName,
                 historyFormatted,
                 isInternalTeam: false,
             };

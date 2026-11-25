@@ -104,7 +104,7 @@ export function compileSystemPrompt(rawPrompt, options) {
             const isKnownName = clientName && clientName.trim() !== '' && clientName.toLowerCase() !== 'desconhecido';
             const firstName = isKnownName ? clientName.trim().split(/\s+/)[0] : '';
             const nameDirective = isKnownName
-                ? `Você está conversando com ${clientName}. Trate-o(a) cordialmente pelo primeiro nome ("${firstName}") com naturalidade e acolhimento. Não pergunte o nome novamente, pois já está identificado no sistema.`
+                ? `Você está conversando com ${clientName}. Trate-o(a) cordialmente pelo primeiro nome ("${firstName}") com naturalidade e acolhimento. Não pergunte o nome novamente, pois já está identificado no sistema. ATENÇÃO COGNITIVA: Caso o nome registrado acima pareça ser uma frase/slogan (religioso, afeto a terceiros como "amor do papai/mamãe", comercial ou apelido genérico) e NÃO o nome pessoal real do interlocutor, JAMAIS o chame por essas palavras. Trate-o cordialmente sem usar esse rótulo e pergunte com gentileza como prefere ser chamado(a).`
                 : `O nome do cliente ainda não está registrado (identificado como "Desconhecido"). Trate cordialmente e, quando for oportuno na conversa, pergunte como pode chamá-lo(a) e salve com \`save_client_name\`.`;
             const lines = [
                 '',
@@ -127,6 +127,7 @@ export function compileSystemPrompt(rawPrompt, options) {
             lines.push(`- Documentos e Atualizações Liberados no Dossiê deste Cliente:\n${docsIndex}`);
             lines.push(`- Diretrizes Automáticas de Formatação e Estado:\n` +
                 `  • Formatação no WhatsApp: use APENAS UM asterisco para negrito (*negrito*). NUNCA use asteriscos duplos (**negrito**) e NUNCA dobre aspas (""destaque"").\n` +
+                `  • ANÁLISE COGNITIVA DO NOME: Avalie criticamente se o interlocutor possui um nome humano pessoal real. Se parecer slogan de fé, frase afetiva ou comércio, trate como Desconhecido e pergunte gentilmente como prefere ser chamado.\n` +
                 `  • Se "Nome Registrado" for "Desconhecido" e o cliente informar o nome, acione \`save_client_name\` imediatamente.\n` +
                 `  • Se houver documentos liberados acima relacionados à pergunta do cliente, consulte \`search_knowledge_base\` antes de responder.\n` +
                 `  • Se "Status Atual do Atendimento" for \`triagem_concluida\` ou \`converted\`, NÃO acione \`convert_lead\` novamente para o mesmo assunto.`);

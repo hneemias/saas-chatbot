@@ -15,6 +15,7 @@ import { evolutionApi } from '../integrations/evolution.js';
 import { logger } from '../utils/logger.js';
 import { compileSystemPrompt } from '../utils/prompt-compiler.js';
 import { normalizeWhatsAppJid } from '../utils/phone.js';
+import { sanitizePushName } from '../utils/name-validator.js';
 
 export const webhookRouter = Router();
 
@@ -105,7 +106,8 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const pushName = body.data.pushName || 'Desconhecido';
+    // Sanitiza pushName descartando slogans religiosos, frases, homenagens, comércios e siglas
+    const pushName = sanitizePushName(body.data.pushName);
     const isAudio = messageType === 'audioMessage' || messageType === 'voiceMessage';
 
     // 3. EXTRAÇÃO OU TRANSCRIÇÃO DE ÁUDIO VIA GEMINI
@@ -321,10 +323,12 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
       const internalAgentName = config.internal_agent_name || 'Atlas';
       const clientMemorySummary = memoryService.extractClientMemory(client);
 
+      const effectiveClientName = sanitizePushName(client.name && client.name !== 'Desconhecido' ? client.name : pushName);
+
       const historyFormatted = messageService.formatHistoryForAgent(
         history,
         externalAgentName,
-        client.name || pushName,
+        effectiveClientName,
         'external'
       );
 
@@ -335,7 +339,7 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
       const compiledPrompt = compileSystemPrompt(rawPrompt, {
         mode: 'external',
         tenantName: tenant.name,
-        clientName: client.name || pushName,
+        clientName: effectiveClientName,
         clientStatus: client.status,
         phone: remoteJid,
         agentName: externalAgentName,
@@ -355,7 +359,7 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         notificationGroupId: config.notification_group_id,
         phone: remoteJid,
         clientId: client.id,
-        clientName: client.name || pushName,
+        clientName: effectiveClientName,
         historyFormatted,
         isInternalTeam: false,
       };
