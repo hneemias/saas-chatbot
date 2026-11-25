@@ -12,7 +12,7 @@ ENV PORT=3000
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 
 COPY dist ./dist
 

@@ -14,7 +14,7 @@ export function createServer() {
         res.json({
             status: 'ok',
             service: 'saas-chatbot-backend',
-            version: '1.0.5-tts-direct',
+            version: '1.0.6-tts-direct',
             timestamp: new Date().toISOString(),
         });
     };

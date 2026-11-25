@@ -1,6 +1,6 @@
 {
   "name": "saas-advocacia-service",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "private": true,
   "type": "module",
   "description": "Backend de atendimento inteligente multitenant para escritórios de advocacia via WhatsApp (Evolution API)",
