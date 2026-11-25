@@ -88,6 +88,24 @@ export const searchProductsTool: AgentTool = {
   },
 };
 
+// Cache em memória para evitar envio duplicado da mesma foto na mesma interação
+const recentSentPhotos = new Map<string, number>();
+
+function isPhotoRecentlySent(key: string): boolean {
+  const now = Date.now();
+  const sentAt = recentSentPhotos.get(key);
+  if (sentAt && now - sentAt < 45000) {
+    return true;
+  }
+  recentSentPhotos.set(key, now);
+  if (recentSentPhotos.size > 200) {
+    for (const [k, v] of recentSentPhotos.entries()) {
+      if (now - v > 60000) recentSentPhotos.delete(k);
+    }
+  }
+  return false;
+}
+
 /**
  * Ferramenta de envio de foto real do produto no WhatsApp do cliente.
  */
@@ -95,7 +113,7 @@ export const sendProductPhotoTool: AgentTool = {
   declaration: {
     name: 'send_product_photo',
     description:
-      'Envia no WhatsApp do cliente a foto real de até 3 produtos do catálogo (apenas produtos que retornaram `has_photo: true` em `search_products`). Gere SEMPRE também uma resposta curta em texto acompanhando o envio.',
+      'Envia no WhatsApp do cliente a foto real de até 3 produtos do catálogo (apenas produtos que retornaram `has_photo: true` em `search_products`). A foto já inclui legenda com nome, código e valor. Gere apenas uma frase curta e simpática acompanhando o envio, SEM repetir a legenda e SEM escrever "[Foto enviada]".',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -130,6 +148,13 @@ export const sendProductPhotoTool: AgentTool = {
         continue;
       }
 
+      const dedupeKey = `${context.tenantId}:${context.phone}:${prod.sku}`;
+      if (isPhotoRecentlySent(dedupeKey)) {
+        logger.info({ sku: prod.sku, phone: context.phone }, 'Foto já enviada recentemente, ignorando retransmissão duplicada');
+        sentProducts.push(`${prod.name} (${formatBrl(prod.price)})`);
+        continue;
+      }
+
       const caption = `*${prod.name}*\nCódigo: ${prod.sku} • Valor: *${formatBrl(prod.price)}*`;
 
       try {
@@ -147,7 +172,7 @@ export const sendProductPhotoTool: AgentTool = {
           client_id: context.clientId || null,
           phone: context.phone,
           role: 'assistant',
-          content: `[Foto enviada] ${caption}`,
+          content: caption,
           message_type: 'image',
         });
 
@@ -161,6 +186,8 @@ export const sendProductPhotoTool: AgentTool = {
       success: sentProducts.length > 0,
       sent_count: sentProducts.length,
       sent_products: sentProducts,
+      instruction:
+        'A foto já foi enviada no WhatsApp com a legenda completa (nome, código e valor). Na sua resposta em texto de acompanhamento, NÃO repita a legenda e NÃO escreva "[Foto enviada]". Apenas escreva 1 ou 2 frases simpáticas comentando sobre o modelo e perguntando a opinião do cliente.',
       without_photo: withoutPhoto.length > 0 ? withoutPhoto : undefined,
     };
   },

@@ -137,11 +137,43 @@ export class AgentService {
         }
         throw lastError;
     }
-    splitIntoChunks(text, maxLen = 1500) {
+    splitIntoChunks(text, maxLen = 1200) {
         if (!text || text.trim() === '')
             return [];
-        const chunks = text.match(new RegExp(`.{1,${maxLen}}(\\s|$)|[\\S]+?(\\s|$)`, 'g')) || [text];
-        return chunks.map((c) => c.trim()).filter(Boolean);
+        // Remove qualquer resquício acidental de marcador de foto ou dados técnicos duplicados
+        let cleaned = text
+            .replace(/\[Foto enviada\][^\n]*\n?/gi, '')
+            .replace(/^Código:\s*\d+\s*•\s*Valor:[^\n]*\n?/gmi, '')
+            .trim();
+        if (!cleaned)
+            return [];
+        // Se o texto total couber confortavelmente em até 800 caracteres, envie em balão único (sem picar por linha)
+        if (cleaned.length <= 800) {
+            return [cleaned];
+        }
+        // Divide prioritariamente por parágrafos duplos (\n\n)
+        const paragraphs = cleaned.split(/\n\s*\n/);
+        const chunks = [];
+        let current = '';
+        for (const para of paragraphs) {
+            const trimmed = para.trim();
+            if (!trimmed)
+                continue;
+            if (!current) {
+                current = trimmed;
+            }
+            else if (current.length + trimmed.length + 2 <= maxLen) {
+                current += '\n\n' + trimmed;
+            }
+            else {
+                chunks.push(current);
+                current = trimmed;
+            }
+        }
+        if (current) {
+            chunks.push(current);
+        }
+        return chunks.length > 0 ? chunks : [cleaned];
     }
 }
 export const agentService = new AgentService();
