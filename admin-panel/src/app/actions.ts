@@ -779,28 +779,52 @@ export async function setClientAiStatus(params: {
 export async function updateClientProfile(params: {
     tenantId: string;
     clientId: string;
-    name: string;
-    status: string;
+    name?: string;
+    status?: string;
+    voiceMode?: "auto" | "always_voice" | "always_text";
 }) {
     await requireAdminSession();
     const supabase = createAdminClient();
 
-    const updatePayload: Record<string, any> = {
-        name: params.name.trim() || "Desconhecido",
-        status: params.status,
-    };
+    const updatePayload: Record<string, any> = {};
 
-    if (params.status === "paused") {
-        const { data: current } = await supabase
+    if (params.name !== undefined) {
+        updatePayload.name = params.name.trim() || "Desconhecido";
+    }
+
+    if (params.status !== undefined) {
+        updatePayload.status = params.status;
+        if (params.status === "paused") {
+            const { data: current } = await supabase
+                .from("clients")
+                .select("status")
+                .eq("id", params.clientId)
+                .eq("tenant_id", params.tenantId)
+                .maybeSingle();
+
+            if (current?.status && current.status !== "paused") {
+                updatePayload.previous_status = current.status;
+            }
+        }
+    }
+
+    if (params.voiceMode !== undefined) {
+        const { data: clientData } = await supabase
             .from("clients")
-            .select("status")
+            .select("metadata")
             .eq("id", params.clientId)
             .eq("tenant_id", params.tenantId)
             .maybeSingle();
 
-        if (current?.status && current.status !== "paused") {
-            updatePayload.previous_status = current.status;
-        }
+        const currentMeta =
+            clientData?.metadata && typeof clientData.metadata === "object"
+                ? clientData.metadata
+                : {};
+
+        updatePayload.metadata = {
+            ...currentMeta,
+            voice_mode: params.voiceMode,
+        };
     }
 
     const { error } = await supabase

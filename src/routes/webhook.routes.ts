@@ -384,9 +384,20 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
 
         if (!aiReply || aiReply.trim() === '') return;
 
-        // Se o cliente enviou áudio, responde por voz via TTS neural
-        if (isAudio) {
-          logger.info({ client: client.name || client.phone }, 'Cliente enviou áudio. Sintetizando resposta em áudio (TTS)...');
+        // Configuração do formato de resposta para este cliente:
+        // 'auto' = De acordo com o que o cliente enviar (áudio -> áudio, texto -> texto)
+        // 'always_voice' = Sempre responder por áudio/voz
+        // 'always_text' = Sempre responder por texto
+        const voiceMode = (client.metadata as any)?.voice_mode || 'auto';
+        const shouldRespondVoice =
+          voiceMode === 'always_voice' ||
+          (voiceMode === 'auto' && isAudio);
+
+        if (shouldRespondVoice) {
+          logger.info(
+            { client: client.name || client.phone, voiceMode, isAudio },
+            'Sintetizando resposta em áudio (TTS) para o cliente...'
+          );
           const audioBase64 = await ttsService.generateSpeechBase64(aiReply, 'pt-BR-FranciscaNeural');
           if (audioBase64) {
             await evolutionApi.sendAudioMessage({

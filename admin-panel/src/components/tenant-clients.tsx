@@ -43,6 +43,8 @@ import {
     ChevronDown,
     ChevronUp,
     Save,
+    Volume2,
+    Mic,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -86,6 +88,7 @@ export function TenantClients({
     const [isEditingName, setIsEditingName] = useState(false);
     const [editClientName, setEditClientName] = useState("");
     const [editClientStatus, setEditClientStatus] = useState("active");
+    const [editClientVoiceMode, setEditClientVoiceMode] = useState("auto");
     const [editMemorySummary, setEditMemorySummary] = useState("");
 
     // Formulário novo documento do cliente
@@ -197,6 +200,7 @@ export function TenantClients({
         setIsEditingName(false);
         setEditClientName(client.name || "");
         setEditClientStatus(client.status || "active");
+        setEditClientVoiceMode(client.metadata?.voice_mode || "auto");
         setEditMemorySummary(client.metadata?.memory_summary || "");
         setDrawerTab(defaultTab);
         setDrawerLoading(true);
@@ -460,6 +464,18 @@ export function TenantClients({
                                                     Memória IA Ativa
                                                 </span>
                                             )}
+                                            {c.metadata?.voice_mode === "always_voice" && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                    <Mic className="size-3" />
+                                                    Sempre Voz
+                                                </span>
+                                            )}
+                                            {c.metadata?.voice_mode === "always_text" && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                                    <MessageSquare className="size-3" />
+                                                    Sempre Texto
+                                                </span>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
@@ -678,6 +694,51 @@ export function TenantClients({
                                             <option value="archive">Arquivado</option>
                                         </select>
                                     </div>
+                                </div>
+
+                                {/* Formato de Resposta do Assistente (Áudio / Texto / Espelho) */}
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 pb-1 border-t border-zinc-200/60">
+                                    <div className="flex items-center gap-1.5 text-xs text-zinc-600 font-medium">
+                                        <Volume2 className="size-3.5 text-indigo-600" />
+                                        <span>Formato de Resposta do Assistente:</span>
+                                    </div>
+                                    <select
+                                        value={editClientVoiceMode}
+                                        disabled={isPending}
+                                        onChange={(e) => {
+                                            const nextMode = e.target.value as "auto" | "always_voice" | "always_text";
+                                            setEditClientVoiceMode(nextMode);
+                                            startTransition(async () => {
+                                                const res = await updateClientProfile({
+                                                    tenantId,
+                                                    clientId: selectedClient.id,
+                                                    voiceMode: nextMode,
+                                                });
+                                                if ((res as any)?.error) {
+                                                    toast.error((res as any).error);
+                                                } else {
+                                                    setSelectedClient((prev: any) =>
+                                                        prev
+                                                            ? {
+                                                                  ...prev,
+                                                                  metadata: {
+                                                                      ...(prev.metadata || {}),
+                                                                      voice_mode: nextMode,
+                                                                  },
+                                                              }
+                                                            : null
+                                                    );
+                                                    toast.success("Formato de resposta atualizado!");
+                                                    router.refresh();
+                                                }
+                                            });
+                                        }}
+                                        className="h-8 rounded-lg border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-800 cursor-pointer hover:border-indigo-300 transition-colors"
+                                    >
+                                        <option value="auto">De acordo com o cliente (Áudio ↔ Áudio, Texto ↔ Texto)</option>
+                                        <option value="always_voice">Sempre responder por Voz (Áudio)</option>
+                                        <option value="always_text">Sempre responder por Texto</option>
+                                    </select>
                                 </div>
 
                                 <div className="flex items-center gap-2 pt-1">
