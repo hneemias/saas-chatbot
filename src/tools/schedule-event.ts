@@ -8,7 +8,7 @@ import { logger } from '../utils/logger.js';
 export const scheduleEventTool: AgentTool = {
   declaration: {
     name: 'schedule_event',
-    description: 'Agenda uma consulta ou reunião jurídica na agenda do Google Calendar.',
+    description: 'Agenda um atendimento, consulta ou reunião na agenda do Google Calendar.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -26,7 +26,7 @@ export const scheduleEventTool: AgentTool = {
         },
         topic: {
           type: SchemaType.STRING,
-          description: 'Assunto da consulta (ex: "Consulta Previdenciária", "Atendimento Inicial").',
+          description: 'Assunto do agendamento (ex: "Atendimento Inicial", "Avaliação Técnica", "Reunião Comercial").',
         },
         event_id: {
           type: SchemaType.STRING,
@@ -64,8 +64,8 @@ export const scheduleEventTool: AgentTool = {
 
       const clientName = args.client_name || context.clientName || 'Cliente';
       const cleanPhone = context.phone.replace('@s.whatsapp.net', '');
-      const summary = `⚖️ Consulta: ${clientName} - ${args.topic || 'Atendimento Jurídico'}`;
-      const description = `Consulta jurídica agendada pela Assistente Virtual.\n\nCliente: ${clientName}\nTelefone: wa.me/${cleanPhone}\nAssunto: ${args.topic || 'Não especificado'}`;
+      const summary = `📅 Agendamento: ${clientName} - ${args.topic || 'Atendimento'}`;
+      const description = `Agendamento realizado pela Assistente Virtual.\n\nCliente: ${clientName}\nTelefone: wa.me/${cleanPhone}\nAssunto: ${args.topic || 'Não especificado'}`;
 
       if (args.event_id) {
         // Reagendamento

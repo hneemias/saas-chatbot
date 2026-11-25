@@ -51,7 +51,7 @@ export class GoogleCalendarClient {
   ): Promise<calendar_v3.Schema$Event[]> {
     const calendar = await this.getCalendarApi(config);
     if (!calendar) {
-      throw new Error('Google Calendar não está autenticado para este escritório. Configure no painel administrativo.');
+      throw new Error('Google Calendar não está autenticado para esta empresa. Configure no painel administrativo.');
     }
 
     const calendarId = config.calendar_id || 'primary';
@@ -79,7 +79,7 @@ export class GoogleCalendarClient {
   ): Promise<calendar_v3.Schema$Event> {
     const calendar = await this.getCalendarApi(config);
     if (!calendar) {
-      throw new Error('Google Calendar não está autenticado para este escritório. Configure no painel administrativo.');
+      throw new Error('Google Calendar não está autenticado para esta empresa. Configure no painel administrativo.');
     }
 
     const calendarId = config.calendar_id || 'primary';
@@ -121,7 +121,7 @@ export class GoogleCalendarClient {
   ): Promise<calendar_v3.Schema$Event> {
     const calendar = await this.getCalendarApi(config);
     if (!calendar) {
-      throw new Error('Google Calendar não está autenticado para este escritório. Configure no painel administrativo.');
+      throw new Error('Google Calendar não está autenticado para esta empresa. Configure no painel administrativo.');
     }
 
     const calendarId = config.calendar_id || 'primary';

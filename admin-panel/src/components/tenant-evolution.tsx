@@ -15,7 +15,7 @@ export function TenantEvolution({ data }: { data: EvolutionData[] }) {
             <div className="p-12 text-center text-zinc-500">
                 <BarChart3 className="size-10 mx-auto opacity-20 mb-2" />
                 <p className="text-sm font-medium">
-                    Sem dados históricos suficientes para este escritório.
+                    Sem dados históricos suficientes para esta empresa.
                 </p>
             </div>
         );

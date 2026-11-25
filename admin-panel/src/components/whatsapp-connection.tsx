@@ -190,7 +190,7 @@ export function WhatsAppConnection({ instanceName, apiKey }: WhatsAppConnectionP
                                         Vincular Aparelho WhatsApp
                                     </p>
                                     <p className="text-sm text-slate-500 leading-relaxed">
-                                        Conecte o WhatsApp do escritório na Evolution API para ativar a Karol e o Atlas.
+                                        Conecte o WhatsApp da empresa para iniciar o atendimento automático.
                                     </p>
                                 </div>
                                 <Button
@@ -315,7 +315,7 @@ export function WhatsAppConnection({ instanceName, apiKey }: WhatsAppConnectionP
                 onConfirm={handleDisconnect}
                 isLoading={actionLoading}
                 title="Desconectar WhatsApp?"
-                description="Isso interromperá imediatamente todas as automações de IA para este escritório até que uma nova conexão seja feita."
+                description="Isso interromperá imediatamente o atendimento automático desta empresa até que uma nova conexão seja feita."
                 confirmText="Sim, Desconectar"
                 variant="destructive"
             />

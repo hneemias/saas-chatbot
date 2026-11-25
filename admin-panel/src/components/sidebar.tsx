@@ -9,7 +9,7 @@ import {
     PlusCircle,
     Settings,
     LogOut,
-    Scale,
+    Bot,
     Sparkles,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -31,8 +31,8 @@ export function Sidebar({ user }: SidebarProps) {
 
     const mainNav = [
         { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
-        { href: "/tenants", label: "Escritórios", icon: Building2 },
-        { href: "/tenants/new", label: "Provisionar Novo", icon: PlusCircle },
+        { href: "/tenants", label: "Empresas", icon: Building2 },
+        { href: "/tenants/new", label: "Nova Empresa", icon: PlusCircle },
     ];
 
     const systemNav = [
@@ -71,14 +71,14 @@ export function Sidebar({ user }: SidebarProps) {
                 <div className="flex h-16 items-center justify-between px-5 border-b border-zinc-900">
                     <Link href="/dashboard" className="flex items-center gap-2.5 group">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-md shadow-indigo-600/25 group-hover:scale-105 transition-transform">
-                            <Scale className="h-4 w-4" />
+                            <Bot className="h-4 w-4" />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-sm font-bold tracking-tight text-white leading-none">
-                                JurisAI
+                                AtendeAI
                             </span>
                             <span className="text-[10px] font-medium text-zinc-500 mt-1 leading-none">
-                                Legal Cloud v2.0
+                                Multi-Empresa v2.0
                             </span>
                         </div>
                     </Link>
@@ -151,10 +151,10 @@ export function Sidebar({ user }: SidebarProps) {
                 <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3.5 space-y-1.5">
                     <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
                         <Sparkles className="size-3.5 text-indigo-400" />
-                        <span>Motor RAG Híbrido</span>
+                        <span>Atendimento Inteligente</span>
                     </div>
                     <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        Isolamento Zero-Trust ativo entre base institucional e dossiês de clientes.
+                        Base de conhecimento, catálogo e dossiês isolados por empresa.
                     </p>
                 </div>
 

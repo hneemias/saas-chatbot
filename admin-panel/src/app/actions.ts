@@ -67,32 +67,32 @@ export async function createTenant(_prevState: any, formData: FormData) {
         .single();
 
     if (tenantError) {
-        return { message: "Erro ao criar escritório: " + tenantError.message };
+        return { message: "Erro ao criar empresa: " + tenantError.message };
     }
 
     const { error: configError } = await supabase.from("tenant_configs").insert({
         tenant_id: tenant.id,
         internal_agent_name: "Atlas",
-        external_agent_name: "Karol",
+        external_agent_name: "Assistente",
         internal_system_prompt:
-            `Você é {{ agent_name }}, o Cérebro Operacional de **{{ tenant_name }}**.\n` +
+            `Você é {{ agent_name }}, o Copiloto Operacional de **{{ tenant_name }}**.\n` +
             `Sua função é apoiar a equipe interna fornecendo análises, resumos e consultas rápidas.\n\n` +
             `### FERRAMENTAS DISPONÍVEIS:\n` +
             `- \`get_daily_summary\`: Resumo de atendimentos por data (formato YYYY-MM-DD).\n` +
             `- \`update_client_status\`: Atualiza status de clientes no CRM.\n` +
-            `- \`search_knowledge_base\`: Consulta documentos internos do escritório e pastas/dossiês de clientes.\n\n` +
+            `- \`search_knowledge_base\`: Consulta documentos internos da empresa e pastas/dossiês de clientes.\n\n` +
             `### PAPÉIS E SEGURANÇA:\n` +
             `- "{{ external_agent_name }}" atende o público externo, enquanto você ({{ agent_name }}) atende exclusivamente a equipe interna.\n` +
             `- Nunca invente dados nem aja como "{{ external_agent_name }}".`,
         external_system_prompt:
-            `Você é **{{ agent_name }}**, Assistente Jurídica Virtual de **{{ tenant_name }}**.\n` +
-            `Sua função é realizar triagem de clientes e agendamentos com clareza, empatia e objetividade.\n\n` +
+            `Você é **{{ agent_name }}**, Assistente Virtual de **{{ tenant_name }}**.\n` +
+            `Sua função é realizar o atendimento consultivo de clientes, qualificação e agendamentos com clareza, empatia e objetividade.\n\n` +
             `### FERRAMENTAS DISPONÍVEIS (SEMPRE RESPONDA POR TEXTO JUNTO COM A FERRAMENTA):\n` +
             `- \`save_client_name\`: Salve o nome do cliente assim que ele se identificar.\n` +
-            `- \`search_knowledge_base\`: Consulte valores, documentos necessários e andamentos liberados do cliente.\n` +
-            `- \`convert_lead\`: Classifique e envie o lead ao concluir a triagem.\n` +
-            `- \`notify_team\`: Avise a equipe sobre dúvidas processuais de clientes fechados.\n` +
-            `- \`human_escalation\`: Transfira para atendimento humano em caso de urgência ou irritação.`,
+            `- \`search_knowledge_base\`: Consulte serviços, valores, regras e documentos liberados do cliente.\n` +
+            `- \`convert_lead\`: Classifique e encaminhe o atendimento ao concluir a triagem.\n` +
+            `- \`notify_team\`: Avise a equipe sobre solicitações pontuais de clientes em andamento.\n` +
+            `- \`human_escalation\`: Transfira para atendimento humano em caso de urgência ou pedido explícito.`,
         classifier_rules: {
             enable_product_catalog: enableCatalog,
         },
@@ -100,7 +100,7 @@ export async function createTenant(_prevState: any, formData: FormData) {
     });
 
     if (configError) {
-        return { message: "Escritório criado, mas erro na config inicial: " + configError.message };
+        return { message: "Empresa criada, mas erro na configuração inicial: " + configError.message };
     }
 
     revalidatePath("/tenants");
@@ -334,7 +334,7 @@ export async function getEvolutionGroups(tenantId: string) {
         .single();
 
     if (error || !tenant) {
-        return { error: "Escritório não encontrado" };
+        return { error: "Empresa não encontrada" };
     }
 
     return await getGroups(tenant.evolution_instance_name, tenant.evolution_api_key);
@@ -935,37 +935,49 @@ export async function getTenantProducts(params: {
     await requireAdminSession();
     const supabase = createAdminClient();
 
-    let qb = supabase
-        .from("products")
-        .select("id, tenant_id, sku, name, category, description, price, stock_quantity, image_urls, active, updated_at")
-        .eq("tenant_id", params.tenantId)
-        .order("updated_at", { ascending: false })
-        .limit(500);
+    const pageSize = 1000;
+    const maxItems = 20000;
+    const allRows: any[] = [];
+    let from = 0;
 
-    if (params.stockFilter === "in_stock") {
-        qb = qb.gt("stock_quantity", 0);
-    } else if (params.stockFilter === "out_of_stock") {
-        qb = qb.lte("stock_quantity", 0);
-    }
+    while (allRows.length < maxItems) {
+        let qb = supabase
+            .from("products")
+            .select("id, tenant_id, sku, name, category, description, price, stock_quantity, image_urls, active, updated_at")
+            .eq("tenant_id", params.tenantId)
+            .order("name", { ascending: true })
+            .range(from, from + pageSize - 1);
 
-    if (params.search && params.search.trim() !== "") {
-        const term = params.search
-            .trim()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
-        qb = qb.ilike("search_text", `%${term}%`);
-    }
-
-    const { data, error } = await qb;
-    if (error) {
-        if (/relation .*products.* does not exist|Could not find the table/i.test(error.message)) {
-            return { data: [], tableMissing: true };
+        if (params.stockFilter === "in_stock") {
+            qb = qb.gt("stock_quantity", 0);
+        } else if (params.stockFilter === "out_of_stock") {
+            qb = qb.lte("stock_quantity", 0);
         }
-        return { data: [], error: error.message };
+
+        if (params.search && params.search.trim() !== "") {
+            const term = params.search
+                .trim()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
+            qb = qb.ilike("search_text", `%${term}%`);
+        }
+
+        const { data, error } = await qb;
+        if (error) {
+            if (/relation .*products.* does not exist|Could not find the table/i.test(error.message)) {
+                return { data: [], tableMissing: true };
+            }
+            return { data: [], error: error.message };
+        }
+
+        if (!data || data.length === 0) break;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
     }
 
-    let items = data || [];
+    let items = allRows;
     if (params.stockFilter === "with_photo") {
         items = items.filter((p: any) => Array.isArray(p.image_urls) && p.image_urls.length > 0);
     }
@@ -1017,16 +1029,25 @@ export async function bulkImportTenantProducts(payload: {
         return { error: "Nenhum produto válido encontrado na planilha." };
     }
 
-    const { data: existingRows, error: readErr } = await supabase
-        .from("products")
-        .select("sku, category, description, image_urls")
-        .eq("tenant_id", payload.tenantId);
+    const existingMap = new Map<string, any>();
+    let existingFrom = 0;
+    while (true) {
+        const { data: existingPage, error: readErr } = await supabase
+            .from("products")
+            .select("sku, category, description, image_urls")
+            .eq("tenant_id", payload.tenantId)
+            .range(existingFrom, existingFrom + 999);
 
-    if (readErr) {
-        return { error: readErr.message };
+        if (readErr) {
+            return { error: readErr.message };
+        }
+        if (!existingPage || existingPage.length === 0) break;
+        for (const x of existingPage) {
+            existingMap.set(x.sku, x);
+        }
+        if (existingPage.length < 1000) break;
+        existingFrom += 1000;
     }
-
-    const existingMap = new Map<string, any>((existingRows || []).map((x: any) => [x.sku, x]));
     const nowIso = new Date().toISOString();
     let newProducts = 0;
     let updatedProducts = 0;
@@ -1193,18 +1214,24 @@ export async function bulkMatchProductPhotosAction(formData: FormData) {
         return { error: "Selecione ao menos uma foto para vincular." };
     }
 
-    const { data: products, error: pErr } = await supabase
-        .from("products")
-        .select("id, sku, image_urls")
-        .eq("tenant_id", tenantId);
-
-    if (pErr || !products) {
-        return { error: pErr?.message || "Erro ao consultar catálogo." };
-    }
-
     const byNormalizedSku = new Map<string, any>();
-    for (const p of products) {
-        byNormalizedSku.set(String(p.sku).trim().toLowerCase(), p);
+    let photoFrom = 0;
+    while (true) {
+        const { data: pageProducts, error: pErr } = await supabase
+            .from("products")
+            .select("id, sku, image_urls")
+            .eq("tenant_id", tenantId)
+            .range(photoFrom, photoFrom + 999);
+
+        if (pErr) {
+            return { error: pErr.message || "Erro ao consultar catálogo." };
+        }
+        if (!pageProducts || pageProducts.length === 0) break;
+        for (const p of pageProducts) {
+            byNormalizedSku.set(String(p.sku).trim().toLowerCase(), p);
+        }
+        if (pageProducts.length < 1000) break;
+        photoFrom += 1000;
     }
 
     let matched = 0;

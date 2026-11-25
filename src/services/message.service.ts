@@ -91,7 +91,7 @@ export class MessageService {
           mappedRole = 'user';
         } else if (msg.role === 'admin') {
           mappedRole = 'model';
-          mappedText = `[Atendente Humano do Escritório]: ${rawText}`;
+          mappedText = `[Atendente Humano da Equipe]: ${rawText}`;
         } else {
           mappedRole = 'model';
         }

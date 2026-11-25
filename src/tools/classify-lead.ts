@@ -87,7 +87,7 @@ export const classifyLeadTool: AgentTool = {
 
     return {
       success: true,
-      message: 'Lead classificado e enviado com sucesso para a equipe jurídica.',
+      message: 'Atendimento classificado e enviado com sucesso para a equipe responsável.',
     };
   },
 };

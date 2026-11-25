@@ -317,7 +317,7 @@ export function TenantKnowledge({
                         Base de Conhecimento
                     </h3>
                     <p className="text-sm text-slate-500 mt-0.5">
-                        Cadastre regras de atendimento, honorários/valores, checklists e dúvidas frequentes.
+                        Cadastre regras de atendimento, serviços, valores, políticas e dúvidas frequentes.
                     </p>
                 </div>
 

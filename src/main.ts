@@ -12,7 +12,7 @@ async function bootstrap() {
   app.listen(env.PORT, () => {
     logger.info(
       { port: env.PORT, env: env.NODE_ENV },
-      `🚀 Servidor SaaS Advocacia iniciado com sucesso na porta ${env.PORT}`
+      `🚀 Servidor SaaS Chatbot iniciado com sucesso na porta ${env.PORT}`
     );
     logger.info(`Webhook pronto em: http://localhost:${env.PORT}/webhook/evolution`);
     logger.info(`Healthcheck em: http://localhost:${env.PORT}/health`);

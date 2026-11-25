@@ -67,7 +67,7 @@ export const searchKnowledgeBaseTool: AgentTool = {
       return {
         found: false,
         message:
-          'Nenhuma informação específica ou documento liberado foi encontrado para esta consulta. Responda com acolhimento seguindo as diretrizes do escritório e, se for sobre processo em andamento sem informação disponível aqui, ofereça notificar a equipe jurídica.',
+          'Nenhuma informação específica ou documento liberado foi encontrado para esta consulta. Responda com cordialidade seguindo as diretrizes da empresa e, se for sobre solicitação ou atendimento em andamento sem informação disponível aqui, ofereça acionar a equipe responsável.',
       };
     }
 
@@ -88,18 +88,18 @@ export const internalSearchKnowledgeBaseTool: AgentTool = {
   declaration: {
     name: 'search_knowledge_base',
     description:
-      'Consulta a base de conhecimento completa do escritório (pública e interna) e também documentos/certidões/procurações/andamentos na pasta de clientes específicos.',
+      'Consulta a base de conhecimento completa da empresa (pública e interna) e também documentos, ordens de serviço ou atualizações na pasta de clientes específicos.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         query: {
           type: SchemaType.STRING,
-          description: 'Assunto, documento, cláusula, processo ou informação que deseja buscar.',
+          description: 'Assunto, documento, serviço, cláusula ou informação que deseja buscar.',
         },
         client_query: {
           type: SchemaType.STRING,
           description:
-            'Opcional: nome ou telefone do cliente caso o advogado esteja perguntando sobre os documentos/processo de um cliente específico.',
+            'Opcional: nome ou telefone do cliente caso o integrante da equipe esteja perguntando sobre documentos ou histórico de um cliente específico.',
         },
       },
       required: ['query'],
@@ -129,7 +129,7 @@ export const internalSearchKnowledgeBaseTool: AgentTool = {
       if (!matchedClients || matchedClients.length === 0) {
         return {
           found: false,
-          message: `Nenhum cliente encontrado com a referência "${cleanTerm}" neste escritório.`,
+          message: `Nenhum cliente encontrado com a referência "${cleanTerm}" nesta empresa.`,
         };
       }
 
@@ -165,7 +165,7 @@ export const internalSearchKnowledgeBaseTool: AgentTool = {
         client_matched: resolvedClientName,
         message: targetClientId
           ? `Nenhum documento encontrado na pasta de ${resolvedClientName} ou na base institucional para "${args.query}".`
-          : 'Nenhum documento encontrado na base de conhecimento do escritório para esta consulta.',
+          : 'Nenhum documento encontrado na base de conhecimento da empresa para esta consulta.',
       };
     }
 

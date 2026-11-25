@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { login } from "./actions";
 import { toast } from "sonner";
 import {
-    Scale,
+    Bot,
     ArrowRight,
     AlertCircle,
     Eye,
@@ -60,11 +60,11 @@ export default function LoginPage() {
                 {/* Topo / Marca */}
                 <div className="relative z-10 flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
-                        <Scale className="h-5 w-5" />
+                        <Bot className="h-5 w-5" />
                     </div>
                     <div>
                         <span className="text-lg font-bold tracking-tight text-white">
-                            JurisAI
+                            AtendeAI
                         </span>
                         <span className="ml-2 rounded-full bg-zinc-800 border border-zinc-700 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
                             Enterprise v2.0
@@ -77,13 +77,13 @@ export default function LoginPage() {
                     <div className="space-y-4">
                         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-indigo-400">
                             <Sparkles className="size-3.5" />
-                            Automação Jurídica Multitenant
+                            Atendimento Inteligente Multitenant
                         </p>
                         <h1 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-[1.15]">
-                            Atendimento jurídico inteligente, rápido e com sigilo por cliente.
+                            Atendimento comercial e operacional rápido, humano e organizado.
                         </h1>
                         <p className="text-sm text-zinc-400 leading-relaxed">
-                            Centralize o atendimento de múltiplos escritórios no WhatsApp, qualifique clientes automaticamente e organize dossiês individuais com sigilo.
+                            Centralize a operação de múltiplas empresas no WhatsApp, qualifique clientes, consulte produtos em estoque e gerencie dossiês individuais.
                         </p>
                     </div>
 
@@ -91,18 +91,18 @@ export default function LoginPage() {
                         {[
                             {
                                 icon: Sparkles,
-                                title: "Triagem & Qualificação Automática",
-                                desc: "Atende clientes no WhatsApp, tira dúvidas e encaminha casos prontos para a equipe.",
+                                title: "Atendimento, Catálogo & Triagem",
+                                desc: "Responde dúvidas, consulta produtos com fotos e encaminha demandas prontas para a equipe.",
                             },
                             {
                                 icon: ShieldCheck,
                                 title: "Dossiê Individual por Cliente",
-                                desc: "Certidões e andamentos liberados sob controle explícito do escritório.",
+                                desc: "Documentos, ordens de serviço e atualizações sob controle explícito da empresa.",
                             },
                             {
                                 icon: Mic,
-                                title: "Copiloto Interno por Voz",
-                                desc: "Resumos diários e suporte rápido por áudio para sócios e advogados.",
+                                title: "Copiloto da Equipe por Voz",
+                                desc: "Resumos diários e consultas rápidas por áudio para gestores e especialistas.",
                             },
                         ].map((item) => (
                             <div
@@ -127,7 +127,7 @@ export default function LoginPage() {
 
                 {/* Rodapé Esquerdo */}
                 <div className="relative z-10 flex items-center justify-between text-xs text-zinc-500">
-                    <span>© {new Date().getFullYear()} JurisAI Cloud</span>
+                    <span>© {new Date().getFullYear()} AtendeAI Cloud</span>
                     <span className="text-[11px] text-zinc-500">
                         Plataforma de Atendimento Inteligente
                     </span>
@@ -140,10 +140,10 @@ export default function LoginPage() {
                     {/* Logo Mobile */}
                     <div className="flex lg:hidden items-center gap-2.5">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white">
-                            <Scale className="h-4 w-4" />
+                            <Bot className="h-4 w-4" />
                         </div>
                         <span className="text-lg font-bold tracking-tight text-zinc-900">
-                            JurisAI Console
+                            AtendeAI Console
                         </span>
                     </div>
 
@@ -153,7 +153,7 @@ export default function LoginPage() {
                                 Entrar no Console
                             </h2>
                             <p className="text-sm text-zinc-500">
-                                Use suas credenciais administrativas para gerenciar os escritórios.
+                                Use suas credenciais administrativas para gerenciar as empresas.
                             </p>
                         </div>
 

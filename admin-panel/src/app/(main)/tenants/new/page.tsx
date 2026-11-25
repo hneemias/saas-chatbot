@@ -11,7 +11,7 @@ export default function NewTenantPage() {
                     className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
                 >
                     <ArrowLeft className="size-3.5" />
-                    Voltar para Escritórios
+                    Voltar para Empresas
                 </Link>
 
                 <div className="flex items-center gap-3.5">
@@ -20,10 +20,10 @@ export default function NewTenantPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight text-zinc-950">
-                            Provisionar Novo Escritório
+                            Cadastrar Nova Empresa
                         </h1>
                         <p className="text-sm text-zinc-500">
-                            Vincule uma instância da Evolution API e inicialize os agentes Karol e Atlas.
+                            Vincule uma instância do WhatsApp e configure os assistentes de atendimento.
                         </p>
                     </div>
                 </div>

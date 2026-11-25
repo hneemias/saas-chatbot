@@ -17,8 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Advocacia SaaS - Admin",
-  description: "Painel Administrativo para Gestão de Tenants",
+  title: "AtendeAI — Console Administrativo",
+  description: "Plataforma Multitenant de Atendimento Inteligente no WhatsApp",
 };
 
 export default function RootLayout({

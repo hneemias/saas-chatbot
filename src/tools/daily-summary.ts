@@ -20,7 +20,7 @@ export const dailySummaryTool: AgentTool = {
   },
   execute: async (args: { date?: string }, context: ToolContext) => {
     if (context.isInternalTeam === false) {
-      return { success: false, error: 'Acesso restrito exclusivamente à equipe interna do escritório.' };
+      return { success: false, error: 'Acesso restrito exclusivamente à equipe interna da empresa.' };
     }
 
     try {

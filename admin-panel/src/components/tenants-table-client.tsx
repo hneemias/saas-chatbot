@@ -78,7 +78,7 @@ export function TenantsTableClient({ tenants }: { tenants: any[] }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-zinc-200/80 bg-white px-5 py-4 flex items-center justify-between">
                     <div>
-                        <p className="text-xs text-zinc-500 font-medium">Total de Escritórios</p>
+                        <p className="text-xs text-zinc-500 font-medium">Total de Empresas</p>
                         <p className="text-2xl font-bold text-zinc-950 tabular-nums mt-0.5">
                             {stats.total}
                         </p>
@@ -121,7 +121,7 @@ export function TenantsTableClient({ tenants }: { tenants: any[] }) {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="block w-full h-9 pl-9 pr-3 border border-zinc-200 rounded-lg bg-zinc-50/50 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600/15 focus:border-indigo-600 transition-all"
-                                placeholder="Buscar por escritório, instância ou UUID..."
+                                placeholder="Buscar por empresa, instância ou identificador..."
                                 type="text"
                             />
                         </div>
@@ -138,7 +138,7 @@ export function TenantsTableClient({ tenants }: { tenants: any[] }) {
                                             : "text-zinc-500 hover:text-zinc-800"
                                     }`}
                                 >
-                                    {st === "all" ? "Todos" : st === "active" ? "Ativos" : "Inativos"}
+                                    {st === "all" ? "Todas" : st === "active" ? "Ativas" : "Inativas"}
                                 </button>
                             ))}
                         </div>
@@ -151,7 +151,7 @@ export function TenantsTableClient({ tenants }: { tenants: any[] }) {
                     >
                         <Link href="/tenants/new">
                             <Plus className="mr-1.5 size-3.5" />
-                            Provisionar Escritório
+                            Nova Empresa
                         </Link>
                     </Button>
                 </div>
@@ -160,10 +160,10 @@ export function TenantsTableClient({ tenants }: { tenants: any[] }) {
                     <div className="p-14 text-center space-y-2">
                         <Building2 className="size-8 text-zinc-300 mx-auto" />
                         <p className="text-sm font-semibold text-zinc-700">
-                            Nenhum escritório encontrado
+                            Nenhuma empresa encontrada
                         </p>
                         <p className="text-xs text-zinc-400">
-                            Ajuste a busca acima ou provisione um novo escritório jurídico.
+                            Ajuste a busca acima ou cadastre uma nova empresa.
                         </p>
                     </div>
                 ) : (
@@ -227,7 +227,7 @@ export function TenantsTableClient({ tenants }: { tenants: any[] }) {
                                         className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300 transition-all"
                                     >
                                         <BookOpen className="size-3.5 text-emerald-600" />
-                                        Base RAG
+                                        Conhecimento
                                     </Link>
                                     <Link
                                         href={`/tenants/${tenant.id}?tab=whatsapp`}

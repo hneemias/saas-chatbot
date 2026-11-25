@@ -7,7 +7,7 @@ import {
     LayoutDashboard,
     Building2,
     Settings,
-    Scale,
+    Bot,
     LogOut,
 } from "lucide-react";
 import Link from "next/link";
@@ -39,16 +39,16 @@ export function Header({ user }: HeaderProps) {
     const getSegmentLabel = (segment: string) => {
         const labels: Record<string, string> = {
             dashboard: "Visão Geral",
-            tenants: "Escritórios",
+            tenants: "Empresas",
             settings: "Configurações",
-            new: "Novo Escritório",
+            new: "Nova Empresa",
         };
 
         const isUUID =
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
                 segment
             );
-        if (isUUID) return dynamicTitle || "Escritório";
+        if (isUUID) return dynamicTitle || "Empresa";
 
         return labels[segment] || segment;
     };
@@ -115,7 +115,7 @@ export function Header({ user }: HeaderProps) {
                     size="sm"
                     className="hidden sm:inline-flex h-9 text-xs font-medium border-zinc-200 text-zinc-700 hover:bg-zinc-50"
                 >
-                    <Link href="/tenants">Escritórios</Link>
+                    <Link href="/tenants">Empresas</Link>
                 </Button>
                 <Button
                     asChild
@@ -124,7 +124,7 @@ export function Header({ user }: HeaderProps) {
                 >
                     <Link href="/tenants/new">
                         <Plus className="mr-1.5 size-3.5" />
-                        Novo Escritório
+                        Nova Empresa
                     </Link>
                 </Button>
             </div>
@@ -135,16 +135,16 @@ export function Header({ user }: HeaderProps) {
                     <SheetHeader className="p-0 pb-4 border-b border-zinc-800">
                         <SheetTitle className="flex items-center gap-2.5 text-white text-base">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
-                                <Scale className="size-4" />
+                                <Bot className="size-4" />
                             </div>
-                            JurisAI Console
+                            AtendeAI Console
                         </SheetTitle>
                     </SheetHeader>
 
                     <div className="py-4 space-y-1">
                         {[
                             { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
-                            { href: "/tenants", label: "Escritórios", icon: Building2 },
+                            { href: "/tenants", label: "Empresas", icon: Building2 },
                             { href: "/settings", label: "Configurações", icon: Settings },
                         ].map((it) => (
                             <Link

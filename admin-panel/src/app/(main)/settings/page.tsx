@@ -17,7 +17,7 @@ export default async function SettingsPage() {
                     Minha Conta & Segurança
                 </h1>
                 <p className="text-sm text-zinc-500 mt-0.5">
-                    Gerencie suas credenciais administrativas de acesso ao JurisAI Console.
+                    Gerencie suas credenciais administrativas de acesso ao console.
                 </p>
             </div>
 
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
                                 Identificação do Administrador
                             </h2>
                             <p className="text-xs text-zinc-500">
-                                Conta autenticada via sessão JWT criptografada.
+                                Sessão administrativa autenticada e protegida.
                             </p>
                         </div>
                     </div>

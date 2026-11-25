@@ -24,6 +24,8 @@ import {
     Loader2,
     AlertTriangle,
     X,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -120,8 +122,10 @@ export function TenantCatalog({
 
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<"all" | "in_stock" | "out_of_stock" | "with_photo">("all");
+    const [currentPage, setCurrentPage] = useState(1);
     const [showNewForm, setShowNewForm] = useState(false);
     const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
+    const PAGE_SIZE = 50;
 
     const [sku, setSku] = useState("");
     const [name, setName] = useState("");
@@ -162,6 +166,13 @@ export function TenantCatalog({
             );
         });
     }, [initialProducts, search, filter]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedItems = useMemo(() => {
+        const start = (safePage - 1) * PAGE_SIZE;
+        return filtered.slice(start, start + PAGE_SIZE);
+    }, [filtered, safePage]);
 
     const handleSpreadsheetSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -375,19 +386,19 @@ export function TenantCatalog({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3.5">
                         <span className="text-[11px] font-medium text-zinc-500">Total Cadastrado</span>
-                        <p className="text-xl font-bold text-zinc-950 tabular-nums mt-0.5">{stats.total}</p>
+                        <p className="text-xl font-bold text-zinc-950 tabular-nums mt-0.5">{stats.total.toLocaleString("pt-BR")}</p>
                     </div>
                     <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3.5">
                         <span className="text-[11px] font-medium text-zinc-500">Disponíveis em Estoque</span>
-                        <p className="text-xl font-bold text-emerald-700 tabular-nums mt-0.5">{stats.inStock}</p>
+                        <p className="text-xl font-bold text-emerald-700 tabular-nums mt-0.5">{stats.inStock.toLocaleString("pt-BR")}</p>
                     </div>
                     <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3.5">
                         <span className="text-[11px] font-medium text-zinc-500">Com Foto</span>
-                        <p className="text-xl font-bold text-indigo-700 tabular-nums mt-0.5">{stats.withPhoto}</p>
+                        <p className="text-xl font-bold text-indigo-700 tabular-nums mt-0.5">{stats.withPhoto.toLocaleString("pt-BR")}</p>
                     </div>
                     <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3.5">
                         <span className="text-[11px] font-medium text-zinc-500">Sem Saldo</span>
-                        <p className="text-xl font-bold text-zinc-500 tabular-nums mt-0.5">{stats.outOfStock}</p>
+                        <p className="text-xl font-bold text-zinc-500 tabular-nums mt-0.5">{stats.outOfStock.toLocaleString("pt-BR")}</p>
                     </div>
                 </div>
 
@@ -468,8 +479,11 @@ export function TenantCatalog({
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
                         <Input
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Buscar por código, descrição ou categoria..."
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            placeholder="Buscar em todo o catálogo por código, descrição ou categoria..."
                             className="pl-9 h-9 text-xs bg-white"
                         />
                     </div>
@@ -484,7 +498,10 @@ export function TenantCatalog({
                             <button
                                 key={tab.id}
                                 type="button"
-                                onClick={() => setFilter(tab.id as any)}
+                                onClick={() => {
+                                    setFilter(tab.id as any);
+                                    setCurrentPage(1);
+                                }}
                                 className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                                     filter === tab.id
                                         ? "bg-white text-zinc-950 shadow-2xs"
@@ -509,8 +526,50 @@ export function TenantCatalog({
                         </p>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-zinc-200 overflow-hidden bg-white divide-y divide-zinc-100">
-                        {filtered.map((p) => {
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 px-1">
+                            <span>
+                                Exibindo{" "}
+                                <strong className="text-zinc-800">
+                                    {((safePage - 1) * PAGE_SIZE + 1).toLocaleString("pt-BR")}–
+                                    {Math.min(safePage * PAGE_SIZE, filtered.length).toLocaleString("pt-BR")}
+                                </strong>{" "}
+                                de <strong className="text-zinc-800">{filtered.length.toLocaleString("pt-BR")}</strong> produtos
+                            </span>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center gap-1.5">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={safePage <= 1}
+                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                        className="h-7 px-2.5 text-xs"
+                                    >
+                                        <ChevronLeft className="size-3.5 mr-1" />
+                                        Anterior
+                                    </Button>
+                                    <span className="px-2 font-mono text-[11px] font-semibold text-zinc-700">
+                                        Pág. {safePage} / {totalPages}
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={safePage >= totalPages}
+                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                        className="h-7 px-2.5 text-xs"
+                                    >
+                                        Próxima
+                                        <ChevronRight className="size-3.5 ml-1" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="rounded-xl border border-zinc-200 overflow-hidden bg-white divide-y divide-zinc-100">
+                            {paginatedItems.map((p) => {
                             const hasPhoto = Array.isArray(p.image_urls) && p.image_urls.length > 0;
                             const inStock = Number(p.stock_quantity) > 0;
 
@@ -633,6 +692,37 @@ export function TenantCatalog({
                                 </div>
                             );
                         })}
+                        </div>
+
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-end gap-1.5 pt-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={safePage <= 1}
+                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                    className="h-8 px-3 text-xs"
+                                >
+                                    <ChevronLeft className="size-3.5 mr-1" />
+                                    Anterior
+                                </Button>
+                                <span className="px-2.5 font-mono text-xs font-semibold text-zinc-700">
+                                    Página {safePage} de {totalPages}
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={safePage >= totalPages}
+                                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                    className="h-8 px-3 text-xs"
+                                >
+                                    Próxima
+                                    <ChevronRight className="size-3.5 ml-1" />
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

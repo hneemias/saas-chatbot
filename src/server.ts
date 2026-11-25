@@ -9,14 +9,14 @@ export function createServer(): Express {
   const app = express();
 
   app.use(cors());
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '25mb' }));
   app.use(express.urlencoded({ extended: true }));
 
   // Healthcheck
   app.get('/health', (_req, res) => {
     res.json({
       status: 'ok',
-      service: 'saas-advocacia-backend',
+      service: 'saas-chatbot-backend',
       timestamp: new Date().toISOString(),
     });
   });

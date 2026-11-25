@@ -216,35 +216,46 @@ export class ProductService {
     stockFilter?: 'all' | 'in_stock' | 'out_of_stock' | 'with_photo';
     limit?: number;
   }): Promise<{ data: ProductRecord[]; tableMissing?: boolean }> {
-    const { tenantId, search, stockFilter = 'all', limit = 300 } = params;
+    const { tenantId, search, stockFilter = 'all', limit = 10000 } = params;
+    const pageSize = 1000;
+    const allRows: ProductRecord[] = [];
+    let from = 0;
 
-    let qb = supabase
-      .from('products')
-      .select('id, tenant_id, sku, name, category, description, price, stock_quantity, image_urls, active, updated_at')
-      .eq('tenant_id', tenantId)
-      .order('updated_at', { ascending: false })
-      .limit(limit);
+    while (allRows.length < limit) {
+      const fetchCount = Math.min(pageSize, limit - allRows.length);
+      let qb = supabase
+        .from('products')
+        .select('id, tenant_id, sku, name, category, description, price, stock_quantity, image_urls, active, updated_at')
+        .eq('tenant_id', tenantId)
+        .order('name', { ascending: true })
+        .range(from, from + fetchCount - 1);
 
-    if (stockFilter === 'in_stock') {
-      qb = qb.gt('stock_quantity', 0);
-    } else if (stockFilter === 'out_of_stock') {
-      qb = qb.lte('stock_quantity', 0);
-    }
-
-    if (search && search.trim() !== '') {
-      const term = normalizeAccents(search.trim());
-      qb = qb.ilike('search_text', `%${term}%`);
-    }
-
-    const { data, error } = await qb;
-    if (error) {
-      if (/relation .*products.* does not exist|Could not find the table/i.test(error.message)) {
-        return { data: [], tableMissing: true };
+      if (stockFilter === 'in_stock') {
+        qb = qb.gt('stock_quantity', 0);
+      } else if (stockFilter === 'out_of_stock') {
+        qb = qb.lte('stock_quantity', 0);
       }
-      throw new Error(error.message);
+
+      if (search && search.trim() !== '') {
+        const term = normalizeAccents(search.trim());
+        qb = qb.ilike('search_text', `%${term}%`);
+      }
+
+      const { data, error } = await qb;
+      if (error) {
+        if (/relation .*products.* does not exist|Could not find the table/i.test(error.message)) {
+          return { data: [], tableMissing: true };
+        }
+        throw new Error(error.message);
+      }
+
+      if (!data || data.length === 0) break;
+      allRows.push(...(data as ProductRecord[]));
+      if (data.length < fetchCount) break;
+      from += fetchCount;
     }
 
-    let items = (data as ProductRecord[]) || [];
+    let items = allRows;
     if (stockFilter === 'with_photo') {
       items = items.filter((p) => Array.isArray(p.image_urls) && p.image_urls.length > 0);
     }

@@ -167,7 +167,7 @@ webhookRouter.post('/evolution', async (req: Request, res: Response): Promise<vo
         await evolutionApi.sendTextMessage({
           instanceName: tenant.evolution_instance_name,
           remoteJid,
-          text: '👋 *Estou de volta!*\nComo posso ajudar você e o escritório hoje?',
+          text: '👋 *Estou de volta!*\nComo posso ajudar você e a equipe hoje?',
           apiKey: tenant.evolution_api_key,
         });
         return;

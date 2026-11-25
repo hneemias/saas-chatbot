@@ -132,7 +132,7 @@ export function TenantMetrics({ metrics }: TenantMetricsProps) {
                                 Base de Conhecimento
                             </p>
                             <p className="text-[11px] text-zinc-500">
-                                Honorários, regras e dúvidas frequentes
+                                Serviços, valores, regras e dúvidas frequentes
                             </p>
                         </div>
                     </div>
@@ -150,7 +150,7 @@ export function TenantMetrics({ metrics }: TenantMetricsProps) {
                                 Equipe Interna
                             </p>
                             <p className="text-[11px] text-zinc-500">
-                                Acesso de sócios, resumos e voz
+                                Acesso de gestores, resumos e voz
                             </p>
                         </div>
                     </div>
@@ -166,7 +166,7 @@ export function TenantMetrics({ metrics }: TenantMetricsProps) {
                             Conversas Recentes
                         </h3>
                         <p className="text-xs text-zinc-500">
-                            Últimos atendimentos deste escritório. Clique para abrir a conversa do cliente.
+                            Últimos atendimentos desta empresa. Clique para abrir a conversa do cliente.
                         </p>
                     </div>
                     <Link
@@ -286,7 +286,7 @@ export function TenantMetrics({ metrics }: TenantMetricsProps) {
                     </div>
                 ) : (
                     <div className="p-10 text-center text-xs text-zinc-400">
-                        Nenhuma conversa registrada neste escritório até o momento.
+                        Nenhuma conversa registrada nesta empresa até o momento.
                     </div>
                 )}
             </div>

@@ -301,7 +301,7 @@ export function TenantClients({
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Buscar cliente por nome, telefone ou área jurídica..."
+                            placeholder="Buscar cliente por nome, telefone ou categoria..."
                             className="pl-9 bg-white"
                         />
                     </div>
@@ -643,7 +643,7 @@ export function TenantClients({
                                             <Textarea
                                                 value={editMemorySummary}
                                                 onChange={(e) => setEditMemorySummary(e.target.value)}
-                                                placeholder="Ex: • Área: Previdenciário (Aposentadoria Rural)&#10;• Relato: Trabalhou 15 anos na lavoura; possui notas de produtor rural.&#10;• Pendência: Ficou de enviar foto do RG e CPF."
+                                                placeholder="Ex: • Interesse: Orçamento de equipamento / Atendimento inicial&#10;• Relato: Precisa de retorno até sexta-feira; enviou especificações.&#10;• Pendência: Aguardando confirmação de horário."
                                                 className="min-h-[96px] bg-white text-xs leading-relaxed"
                                             />
 
@@ -667,19 +667,19 @@ export function TenantClients({
                                                                         ? { ...prev, metadata: (res as any).metadata }
                                                                         : null
                                                                 );
-                                                                toast.success("Memória de longo prazo do cliente salva!");
+                                                                toast.success("Memória do cliente salva!");
                                                                 router.refresh();
                                                             }
                                                         });
                                                     }}
                                                     className="h-8 bg-violet-700 hover:bg-violet-800 text-white text-xs font-semibold"
                                                 >
-                                                    Salvar Memória IA
+                                                    Salvar Memória
                                                 </Button>
                                             </div>
                                         </div>
 
-                                        {/* Adicionar Certidão / Procuração / Andamento */}
+                                        {/* Adicionar Documento / Atualização */}
                                         <form
                                             onSubmit={handleAddClientDoc}
                                             className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-5 space-y-4"
@@ -687,18 +687,18 @@ export function TenantClients({
                                             <div className="flex items-center gap-2">
                                                 <Plus className="size-4 text-indigo-600" />
                                                 <h4 className="text-sm font-bold text-slate-900">
-                                                    Anexar Documento / Andamento ao Cliente
+                                                    Anexar Documento ou Atualização ao Cliente
                                                 </h4>
                                             </div>
 
                                             <div className="space-y-2">
                                                 <Label className="text-xs font-semibold">
-                                                    Título (ex: Andamento Processo 00123, Procuração, Certidão)
+                                                    Título do Documento ou Registro
                                                 </Label>
                                                 <Input
                                                     value={docTitle}
                                                     onChange={(e) => setDocTitle(e.target.value)}
-                                                    placeholder="Ex: Atualização Processo INSS - Perícia Designada"
+                                                    placeholder="Ex: Ordem de Serviço #1042, Contrato ou Atualização de Status"
                                                     className="bg-white"
                                                     required
                                                 />
@@ -711,7 +711,7 @@ export function TenantClients({
                                                 <Textarea
                                                     value={docContent}
                                                     onChange={(e) => setDocContent(e.target.value)}
-                                                    placeholder="Ex: A perícia médica deste cliente foi marcada para 18/12/2026 às 10h30 no posto INSS Centro. Levar documento com foto e laudos atualizados."
+                                                    placeholder="Ex: Solicitação concluída e disponível para retirada ou acompanhamento a partir de 18/12 às 14h."
                                                     className="min-h-[120px] bg-white text-xs"
                                                     required
                                                 />

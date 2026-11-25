@@ -8,7 +8,7 @@ import { logger } from '../utils/logger.js';
 export const checkAvailabilityTool: AgentTool = {
   declaration: {
     name: 'check_calendar',
-    description: 'Consulta os horários livres e a disponibilidade na agenda do escritório para os próximos 7 dias.',
+    description: 'Consulta os horários livres e a disponibilidade na agenda da empresa para os próximos 7 dias.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -34,7 +34,7 @@ export const checkAvailabilityTool: AgentTool = {
         return {
           success: false,
           available: false,
-          message: 'A integração de agenda deste escritório ainda não foi configurada pelo painel administrativo. Informe ao cliente que o agendamento será confirmado manualmente pela equipe.',
+          message: 'A integração de agenda desta empresa ainda não foi configurada pelo painel administrativo. Informe ao cliente que o agendamento será confirmado manualmente pela equipe.',
         };
       }
 

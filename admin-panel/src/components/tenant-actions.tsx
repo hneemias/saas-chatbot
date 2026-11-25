@@ -35,7 +35,7 @@ export function TenantActions({ tenant }: TenantActionsProps) {
             const res = await deleteTenant(tenant.id);
             if (res.message === "success") {
                 setConfirmDeleteOpen(false);
-                toast.success("Escritório excluído com sucesso.");
+                toast.success("Empresa excluída com sucesso.");
                 router.refresh();
             } else {
                 toast.error(res.message);
@@ -119,7 +119,7 @@ export function TenantActions({ tenant }: TenantActionsProps) {
                         className="rounded-lg cursor-pointer text-xs text-red-600 focus:text-red-700 focus:bg-red-50 flex items-center gap-2.5 py-2"
                     >
                         <Trash2 className="size-3.5" />
-                        <span>Excluir Escritório</span>
+                        <span>Excluir Empresa</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -130,7 +130,7 @@ export function TenantActions({ tenant }: TenantActionsProps) {
                 onConfirm={handleConfirmDelete}
                 isLoading={isPending}
                 title={`Excluir "${tenant.name}"?`}
-                description="Esta ação removerá permanentemente o escritório, suas configurações de IA, clientes, mensagens e documentos RAG vinculados."
+                description="Esta ação removerá permanentemente a empresa, suas configurações, clientes, catálogo, mensagens e documentos vinculados."
                 confirmText="Sim, Excluir"
                 variant="destructive"
             />

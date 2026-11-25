@@ -82,7 +82,7 @@ export function compileSystemPrompt(
     timeZone,
   });
 
-  const tenantName = options.tenantName || 'Escritório';
+  const tenantName = options.tenantName || 'Empresa';
   const externalAgentName =
     options.externalAgentName || (mode === 'external' ? options.agentName : undefined) || 'Karol';
   const internalAgentName =
@@ -131,7 +131,7 @@ export function compileSystemPrompt(
         '',
         '<session_context>',
         `- Data e Hora Atual (Brasília): ${todayDate} (${dayOfWeek}) às ${currentTime}`,
-        `- Organização / Escritório: ${tenantName}`,
+        `- Empresa / Organização: ${tenantName}`,
         `- Copiloto Interno Ativo: ${internalAgentName} (Assistente Externa de Clientes: ${externalAgentName})`,
         `- Membro da Equipe Autenticado: ${adminName} (Cargo: ${adminRole}${phone ? ` | WhatsApp: ${phone}` : ''})`,
         '</session_context>',
@@ -142,7 +142,7 @@ export function compileSystemPrompt(
         '',
         '<session_context>',
         `- Data e Hora Atual (Brasília): ${todayDate} (${dayOfWeek}) às ${currentTime}`,
-        `- Organização / Escritório: ${tenantName}`,
+        `- Empresa / Organização: ${tenantName}`,
         `- Assistente Responsável: ${externalAgentName}`,
         `- Telefone / WhatsApp do Cliente: ${phone || 'Não informado'}`,
         `- Nome Registrado do Cliente: ${clientName}`,

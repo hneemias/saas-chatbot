@@ -96,12 +96,12 @@ export function TenantTeam({ tenantId, members }: TenantTeamProps) {
                 >
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase text-slate-700">
-                            Nome do Advogado(a) / Gestor
+                            Nome do Integrante / Gestor
                         </Label>
                         <Input
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Ex: Dra. Hiana Carolina"
+                            placeholder="Ex: João Silva"
                             className="bg-white"
                             required
                         />
@@ -139,7 +139,7 @@ export function TenantTeam({ tenantId, members }: TenantTeamProps) {
 
                     {members.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-slate-500 text-sm">
-                            Nenhum advogado ou administrador cadastrado neste escritório ainda.
+                            Nenhum integrante ou gestor cadastrado nesta empresa ainda.
                         </div>
                     ) : (
                         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">

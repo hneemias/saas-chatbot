@@ -38,13 +38,13 @@ interface AIConfigFormProps {
 
 const EXTERNAL_TEMPLATE_TAGS = [
     { tag: "{{ agent_name }}", desc: "Nome desta assistente" },
-    { tag: "{{ tenant_name }}", desc: "Nome do escritório" },
+    { tag: "{{ tenant_name }}", desc: "Nome da empresa" },
     { tag: "{{ internal_agent_name }}", desc: "Nome do copiloto interno" },
 ];
 
 const INTERNAL_TEMPLATE_TAGS = [
     { tag: "{{ agent_name }}", desc: "Nome deste copiloto" },
-    { tag: "{{ tenant_name }}", desc: "Nome do escritório" },
+    { tag: "{{ tenant_name }}", desc: "Nome da empresa" },
     { tag: "{{ external_agent_name }}", desc: "Nome da assistente externa" },
 ];
 
@@ -182,7 +182,7 @@ export function AIConfigForm({ tenantId, initialData }: AIConfigFormProps) {
                         }`}
                     >
                         <Bot className="size-3.5 text-indigo-600" />
-                        Clientes: {formData.external_agent_name || "Karol"}
+                        Clientes: {formData.external_agent_name || "Assistente"}
                     </button>
                     <button
                         type="button"
@@ -194,7 +194,7 @@ export function AIConfigForm({ tenantId, initialData }: AIConfigFormProps) {
                         }`}
                     >
                         <UserCog className="size-3.5 text-emerald-600" />
-                        Equipe: {formData.internal_agent_name || "Atlas"}
+                        Equipe: {formData.internal_agent_name || "Copiloto"}
                     </button>
                 </div>
             </div>
@@ -307,7 +307,7 @@ export function AIConfigForm({ tenantId, initialData }: AIConfigFormProps) {
                                         internal_system_prompt: e.target.value,
                                     })
                                 }
-                                placeholder="Defina como o copiloto apoia os advogados, gera resumos e responde por voz..."
+                                placeholder="Defina como o copiloto apoia a equipe interna, gera resumos e responde por voz..."
                                 className="min-h-[380px] font-mono text-xs leading-relaxed bg-zinc-50/40 focus:bg-white"
                             />
                         </div>

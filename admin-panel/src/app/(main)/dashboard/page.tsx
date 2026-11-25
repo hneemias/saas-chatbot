@@ -32,10 +32,10 @@ export default async function DashboardPage() {
 
     const kpis = [
         {
-            label: "Escritórios Provisionados",
+            label: "Empresas Cadastradas",
             value: tenantsCount.toLocaleString("pt-BR"),
             trend: metrics.tenants.percentage,
-            sub: "ativos na plataforma",
+            sub: "ativas na plataforma",
             icon: Building2,
             accent: "bg-indigo-50 text-indigo-600 ring-indigo-600/15",
         },
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
                         Visão Geral da Operação
                     </h1>
                     <p className="text-sm text-zinc-500 mt-0.5">
-                        Monitoramento em tempo real dos escritórios, agentes de IA e infraestrutura.
+                        Monitoramento em tempo real das empresas, assistentes e atendimentos.
                     </p>
                 </div>
 
@@ -175,14 +175,14 @@ export default async function DashboardPage() {
                                 Conversas Recentes
                             </h2>
                             <p className="text-xs text-zinc-500">
-                                Atendimentos ativos nos escritórios. Clique para abrir a conversa do cliente.
+                                Atendimentos ativos nas empresas. Clique para abrir a conversa do cliente.
                             </p>
                         </div>
                         <Link
                             href="/tenants"
                             className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
                         >
-                            Ver escritórios
+                            Ver empresas
                             <ArrowUpRight className="size-3.5" />
                         </Link>
                     </div>

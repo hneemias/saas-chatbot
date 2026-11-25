@@ -56,8 +56,8 @@ export function TenantForm({ tenantId, initialData }: TenantFormProps) {
         if (state.message === "success") {
             toast.success(
                 tenantId
-                    ? "Dados do escritório atualizados!"
-                    : "Escritório provisionado com sucesso!"
+                    ? "Dados da empresa atualizados!"
+                    : "Empresa cadastrada com sucesso!"
             );
             if (!tenantId) router.push("/tenants");
         } else if (state.message) {
@@ -98,23 +98,23 @@ export function TenantForm({ tenantId, initialData }: TenantFormProps) {
         <form action={formAction} className="divide-y divide-zinc-100">
             <div className="px-6 sm:px-8 py-5 bg-zinc-50/50">
                 <h3 className="text-base font-bold text-zinc-950">
-                    {tenantId ? "Identidade & Instância Evolution" : "Dados do Escritório"}
+                    {tenantId ? "Identidade & Instância WhatsApp" : "Dados da Empresa"}
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                    Configure o nome de exibição do escritório e a instância vinculada na Evolution API.
+                    Configure o nome de exibição da empresa e a instância vinculada na Evolution API.
                 </p>
             </div>
 
             <div className="p-6 sm:p-8 space-y-6">
                 <div className="space-y-1.5">
                     <Label htmlFor="name" className="text-xs font-semibold text-zinc-700">
-                        Nome do Escritório
+                        Nome da Empresa
                     </Label>
                     <Input
                         id="name"
                         name="name"
                         defaultValue={initialData?.name}
-                        placeholder="Ex: Advocacia Silva & Associados"
+                        placeholder="Ex: Eletrotech Informática ou Silva Consultoria"
                         required
                         className="h-10"
                     />
@@ -147,7 +147,7 @@ export function TenantForm({ tenantId, initialData }: TenantFormProps) {
                                     );
                                     setShowSuggestions(true);
                                 }}
-                                placeholder="Ex: advocacia_silva"
+                                placeholder="Ex: atendimento_principal"
                                 required
                                 autoComplete="off"
                                 className="h-10 pl-9 font-mono text-xs"
@@ -260,7 +260,7 @@ export function TenantForm({ tenantId, initialData }: TenantFormProps) {
                     ) : (
                         <Save className="mr-2 size-4" />
                     )}
-                    {tenantId ? "Salvar Alterações" : "Provisionar Escritório"}
+                    {tenantId ? "Salvar Alterações" : "Cadastrar Empresa"}
                 </Button>
             </div>
         </form>

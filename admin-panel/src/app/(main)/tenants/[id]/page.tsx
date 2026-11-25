@@ -108,7 +108,7 @@ export default async function TenantDetailsPage({
                             className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
                         >
                             <ArrowLeft className="size-3.5" />
-                            Todos os Escritórios
+                            Todas as Empresas
                         </Link>
 
                         <div className="flex items-center gap-3.5">

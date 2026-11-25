@@ -8,10 +8,10 @@ export default async function TenantsPage() {
         <div className="mx-auto max-w-7xl space-y-6">
             <div>
                 <h1 className="text-2xl font-bold tracking-tight text-zinc-950">
-                    Escritórios & Instâncias
+                    Empresas & Instâncias
                 </h1>
                 <p className="text-sm text-zinc-500 mt-0.5">
-                    Gerencie conexões WhatsApp, prompts da Karol/Atlas, base vetorial RAG, dossiês de clientes e advogados autorizados.
+                    Gerencie conexões WhatsApp, assistentes de atendimento, catálogo, base de conhecimento e equipe.
                 </p>
             </div>
 

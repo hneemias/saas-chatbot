@@ -103,7 +103,7 @@ describe('Compilador de Prompts, Multi-Turn Nativo, Memória Episódica, RAG e T
     const lastModelText = (built.history[built.history.length - 1].parts[0] as any).text;
     expect(lastModelText).toContain('Perfeito! Pode enviar foto do RG.');
     expect(lastModelText).toContain('E também do comprovante de endereço.');
-    expect(lastModelText).toContain('[Atendente Humano do Escritório]: João, aqui é a Dra. Hiana');
+    expect(lastModelText).toContain('[Atendente Humano da Equipe]: João, aqui é a Dra. Hiana');
 
     // Mensagem 'user' pendente no fim do banco foi mesclada na mensagem atual enviada ao sendMessage()
     expect(built.effectiveUserMessage).toBe(
