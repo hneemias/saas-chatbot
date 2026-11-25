@@ -188,10 +188,10 @@ webhookRouter.post('/evolution', async (req, res) => {
                     });
                     if (!reply)
                         return;
-                    // SE O ADMIN ENVIOU ÁUDIO -> RESPONDE POR VOZ VIA TTS MULTIVOZES
+                    // SE O ADMIN ENVIOU ÁUDIO -> RESPONDE POR VOZ VIA TTS
                     if (isAudio) {
                         logger.info({ admin: teamMember.name }, 'Gerando resposta em áudio (TTS) para o administrador');
-                        const audioBase64 = await ttsService.generateSpeechBase64(reply);
+                        const audioBase64 = await ttsService.generateSpeechBase64(reply, 'pt-BR-AntonioNeural');
                         if (audioBase64) {
                             await evolutionApi.sendAudioMessage({
                                 instanceName: tenant.evolution_instance_name,
@@ -315,6 +315,28 @@ webhookRouter.post('/evolution', async (req, res) => {
                 });
                 if (!aiReply || aiReply.trim() === '')
                     return;
+                // Se o cliente enviou áudio, responde por voz via TTS neural
+                if (isAudio) {
+                    logger.info({ client: client.name || client.phone }, 'Cliente enviou áudio. Sintetizando resposta em áudio (TTS)...');
+                    const audioBase64 = await ttsService.generateSpeechBase64(aiReply, 'pt-BR-FranciscaNeural');
+                    if (audioBase64) {
+                        await evolutionApi.sendAudioMessage({
+                            instanceName: tenant.evolution_instance_name,
+                            remoteJid,
+                            audioBase64,
+                            apiKey: tenant.evolution_api_key,
+                        });
+                        await messageService.logMessage({
+                            tenant_id: tenant.id,
+                            client_id: client.id,
+                            phone: remoteJid,
+                            role: 'assistant',
+                            content: `[Áudio de Resposta]: ${aiReply}`,
+                            message_type: 'audio',
+                        });
+                        return;
+                    }
+                }
                 const chunks = agentService.splitIntoChunks(aiReply);
                 for (const chunk of chunks) {
                     await evolutionApi.sendTextMessage({

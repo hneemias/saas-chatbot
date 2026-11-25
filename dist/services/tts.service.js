@@ -34,6 +34,10 @@ export class TtsService {
         if (!text)
             return null;
         return new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                logger.warn({ voice }, 'Timeout na síntese direta MsEdgeTTS (10s)');
+                resolve(null);
+            }, 10000);
             try {
                 const edgeTts = new MsEdgeTTS();
                 const selectedVoice = voice.includes('Neural')
@@ -50,6 +54,7 @@ export class TtsService {
                         chunks.push(chunk);
                     });
                     audioStream.on('end', () => {
+                        clearTimeout(timer);
                         const fullBuffer = Buffer.concat(chunks);
                         if (fullBuffer.length > 0) {
                             logger.info({ voice: selectedVoice, bytes: fullBuffer.length }, 'Áudio sintetizado com sucesso via MsEdgeTTS direto');
@@ -60,16 +65,19 @@ export class TtsService {
                         }
                     });
                     audioStream.on('error', (streamErr) => {
+                        clearTimeout(timer);
                         logger.warn({ err: streamErr?.message }, 'Falha no stream direto do MsEdgeTTS');
                         resolve(null);
                     });
                 })
                     .catch((metaErr) => {
+                    clearTimeout(timer);
                     logger.warn({ err: metaErr?.message }, 'Falha ao inicializar metadados do MsEdgeTTS');
                     resolve(null);
                 });
             }
             catch (err) {
+                clearTimeout(timer);
                 logger.warn({ err: err?.message }, 'Exceção ao instanciar MsEdgeTTS');
                 resolve(null);
             }
