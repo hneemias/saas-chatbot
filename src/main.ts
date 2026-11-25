@@ -9,7 +9,7 @@ async function bootstrap() {
   // Inicializa rotinas de background (Follow-up diário e Reativação de clientes)
   cronService.init();
 
-  app.listen(env.PORT, () => {
+  app.listen(env.PORT, '0.0.0.0', () => {
     logger.info(
       { port: env.PORT, env: env.NODE_ENV },
       `🚀 Servidor SaaS Chatbot iniciado com sucesso na porta ${env.PORT}`
