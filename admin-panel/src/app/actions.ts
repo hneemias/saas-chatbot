@@ -688,11 +688,11 @@ export async function getTenantClientsWithLeads(tenantId: string, ensureClientId
             .not("client_id", "is", null),
         ensureClientId
             ? supabase
-                  .from("clients")
-                  .select("*")
-                  .eq("tenant_id", tenantId)
-                  .eq("id", ensureClientId)
-                  .maybeSingle()
+                .from("clients")
+                .select("*")
+                .eq("tenant_id", tenantId)
+                .eq("id", ensureClientId)
+                .maybeSingle()
             : Promise.resolve({ data: null }),
     ]);
 
@@ -1619,8 +1619,8 @@ export async function getTenantMetrics(tenantId: string) {
         p2Active > 0
             ? (((p1Active - p2Active) / p2Active) * 100).toFixed(1)
             : p1Active > 0
-              ? "100"
-              : "0";
+                ? "100"
+                : "0";
 
     const [messages, aiMessages, activity] = await Promise.all([
         calculateGrowth(supabase, "messages", 30, tenantId),

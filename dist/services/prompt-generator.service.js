@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '../config/env.js';
 import { supabase } from '../integrations/supabase.js';
+import { logger } from '../utils/logger.js';
 export class PromptGeneratorService {
     genAI;
     constructor() {
@@ -96,19 +97,37 @@ ${currentPrompt && currentPrompt.trim().length > 20
             ? `PROMPT ATUALMENTE CONFIGURADO (Use como base para aprimorar, otimizar e corrigir conforme as diretrizes):
 ${currentPrompt.trim()}`
             : ''}`;
-        // 5. Executa a geração com Gemini
-        const model = this.genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            systemInstruction,
-            generationConfig: {
-                temperature: 0.3,
-            },
-        });
-        const result = await model.generateContent(userContent);
-        let text = result.response.text() || '';
-        // Remove eventual bloco de código markdown se o modelo incluiu
-        text = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
-        return text;
+        // 5. Executa a geração com Gemini com cascata de modelos de fallback
+        const candidateModels = Array.from(new Set([
+            env.GEMINI_MODEL,
+            'gemini-flash-lite-latest',
+            env.GEMINI_FALLBACK_MODEL,
+            'gemini-3.5-flash-lite',
+            'gemini-3-flash-preview',
+            'gemini-1.5-flash',
+        ].filter(Boolean)));
+        let lastError = null;
+        for (const modelName of candidateModels) {
+            try {
+                const model = this.genAI.getGenerativeModel({
+                    model: modelName,
+                    systemInstruction,
+                    generationConfig: {
+                        temperature: 0.3,
+                    },
+                });
+                const result = await model.generateContent(userContent);
+                let text = result.response.text() || '';
+                // Remove eventual bloco de código markdown se o modelo incluiu
+                text = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+                return text;
+            }
+            catch (err) {
+                lastError = err;
+                logger.warn({ model: modelName, err: err.message }, 'Falha no modelo ao gerar prompt, tentando fallback...');
+            }
+        }
+        throw lastError || new Error('Nenhum modelo de IA disponível para geração de prompt.');
     }
 }
 export const promptGeneratorService = new PromptGeneratorService();
