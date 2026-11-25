@@ -79,6 +79,8 @@ export function TenantClients({
     const [drawerLoading, setDrawerLoading] = useState(false);
     const [drawerMessages, setDrawerMessages] = useState<any[]>([]);
     const [drawerDocs, setDrawerDocs] = useState<any[]>([]);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Edição explícita de nome, status e memória na gaveta
     const [isEditingName, setIsEditingName] = useState(false);
@@ -221,6 +223,28 @@ export function TenantClients({
             void openClientDrawer(target, initialDrawerTab);
         }
     }, [initialClientId, initialDrawerTab, clients]);
+
+    // Rola para o fim da conversa (mensagens mais recentes) ao abrir a aba de chat
+    useEffect(() => {
+        if (drawerTab === "chat" && !drawerLoading && drawerMessages.length > 0) {
+            const scrollToBottom = () => {
+                if (messagesContainerRef.current) {
+                    messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                }
+                messagesEndRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
+            };
+
+            const frameId = requestAnimationFrame(scrollToBottom);
+            const timer1 = setTimeout(scrollToBottom, 60);
+            const timer2 = setTimeout(scrollToBottom, 250);
+
+            return () => {
+                cancelAnimationFrame(frameId);
+                clearTimeout(timer1);
+                clearTimeout(timer2);
+            };
+        }
+    }, [drawerTab, drawerLoading, drawerMessages]);
 
     const refreshDrawer = async (client: any) => {
         const details = await getClientDrawerDetails({
@@ -682,7 +706,7 @@ export function TenantClients({
                                 </div>
                             </SheetHeader>
 
-                            <div className="p-6 flex-1 space-y-6 overflow-y-auto">
+                            <div ref={messagesContainerRef} className="p-6 flex-1 space-y-6 overflow-y-auto">
                                 {drawerLoading ? (
                                     <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
                                         <Loader2 className="size-6 animate-spin" />
@@ -1025,6 +1049,7 @@ export function TenantClients({
                                                 );
                                             })
                                         )}
+                                        <div ref={messagesEndRef} />
                                     </div>
                                 )}
                             </div>
