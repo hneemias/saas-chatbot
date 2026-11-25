@@ -8,10 +8,11 @@ import { cookies } from "next/headers";
  * devendo sempre ser usado no servidor após requireAdminSession().
  */
 export function createAdminClient() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://comecchrihstbgbdvqqd.supabase.co';
     const key =
         process.env.SUPABASE_SERVICE_ROLE_KEY ||
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvbWVjY2hyaWhzdGJnYmR2cXFkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTIwODU5OCwiZXhwIjoyMDg0Nzg0NTk4fQ.ZkZP3U-eYj-StoxlKCTQ9B2m5jxJAczMC7z3UhM6tZ4';
 
     if (!url || !key) {
         throw new Error("Variáveis SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY ausentes no servidor.");
