@@ -23,6 +23,7 @@
     "express": "^4.21.2",
     "googleapis": "^190.0.0",
     "ioredis": "^5.6.0",
+    "msedge-tts": "^2.1.1",
     "node-cron": "^4.6.0",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",

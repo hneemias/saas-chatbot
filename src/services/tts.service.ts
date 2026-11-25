@@ -1,3 +1,4 @@
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
@@ -30,13 +31,75 @@ export class TtsService {
   }
 
   /**
-   * Gera o áudio via requisição HTTP para o motor Multivozes
+   * Síntese direta via motor nativo MsEdgeTTS (altíssima fidelidade neural brasileira, zero latência e sem dependência de microserviço HTTP)
+   */
+  async generateSpeechDirect(rawText: string, voice = 'pt-BR-AntonioNeural'): Promise<string | null> {
+    const text = this.normalizeTextForSpeech(rawText);
+    if (!text) return null;
+
+    return new Promise((resolve) => {
+      try {
+        const edgeTts = new MsEdgeTTS();
+        const selectedVoice = voice.includes('Neural')
+          ? voice
+          : voice === 'alloy' || voice === 'echo' || voice === 'onyx'
+            ? 'pt-BR-AntonioNeural'
+            : 'pt-BR-FranciscaNeural';
+
+        edgeTts
+          .setMetadata(selectedVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3)
+          .then(() => {
+            const { audioStream } = edgeTts.toStream(text);
+            const chunks: Buffer[] = [];
+
+            audioStream.on('data', (chunk: Buffer) => {
+              chunks.push(chunk);
+            });
+
+            audioStream.on('end', () => {
+              const fullBuffer = Buffer.concat(chunks);
+              if (fullBuffer.length > 0) {
+                logger.info({ voice: selectedVoice, bytes: fullBuffer.length }, 'Áudio sintetizado com sucesso via MsEdgeTTS direto');
+                resolve(fullBuffer.toString('base64'));
+              } else {
+                resolve(null);
+              }
+            });
+
+            audioStream.on('error', (streamErr: any) => {
+              logger.warn({ err: streamErr?.message }, 'Falha no stream direto do MsEdgeTTS');
+              resolve(null);
+            });
+          })
+          .catch((metaErr) => {
+            logger.warn({ err: metaErr?.message }, 'Falha ao inicializar metadados do MsEdgeTTS');
+            resolve(null);
+          });
+      } catch (err: any) {
+        logger.warn({ err: err?.message }, 'Exceção ao instanciar MsEdgeTTS');
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Gera áudio com cascata:
+   * 1. Tenta sintetizar diretamente via MsEdgeTTS Neural em memória;
+   * 2. Se falhar, tenta o microserviço HTTP Multivozes;
    */
   async generateSpeechBase64(rawText: string, voice = 'alloy'): Promise<string | null> {
     const text = this.normalizeTextForSpeech(rawText);
     if (!text) return null;
 
+    // 1. Motor direto nativo (ultra-rápido, voz natural neural brasileira)
+    const directBase64 = await this.generateSpeechDirect(text, voice);
+    if (directBase64) {
+      return directBase64;
+    }
+
+    // 2. Fallback para microserviço HTTP Multivozes
     try {
+      logger.info('Tentando fallback para serviço HTTP Multivozes...');
       const res = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
@@ -52,16 +115,15 @@ export class TtsService {
 
       if (!res.ok) {
         const errText = await res.text();
-        logger.error({ status: res.status, errText }, 'Falha ao gerar áudio no serviço TTS');
+        logger.error({ status: res.status, errText }, 'Falha no fallback HTTP Multivozes');
         return null;
       }
 
-      // Converte o arrayBuffer do áudio para Base64
       const arrayBuffer = await res.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       return buffer.toString('base64');
     } catch (err: any) {
-      logger.error({ err: err.message }, 'Exceção ao chamar serviço Multivozes de áudio');
+      logger.error({ err: err.message }, 'Exceção no fallback HTTP Multivozes');
       return null;
     }
   }
