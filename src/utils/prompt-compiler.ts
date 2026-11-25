@@ -169,15 +169,19 @@ export function compileSystemPrompt(
 
       lines.push(`- Documentos e Atualizações Liberados no Dossiê deste Cliente:\n${docsIndex}`);
       lines.push(
-        `- Diretrizes Automáticas de Formatação, Estado e Anti-Repetição:\n` +
+        `- Diretrizes Automáticas de Formatação, Estado e Descongelamento Cognitivo:\n` +
           `  • Formatação no WhatsApp: use APENAS UM asterisco para negrito (*negrito*). NUNCA use asteriscos duplos (**negrito**) e NUNCA dobre aspas (""destaque"").\n` +
           `  • ANÁLISE COGNITIVA DO NOME: Avalie criticamente se o interlocutor possui um nome humano pessoal real. Se parecer slogan de fé, frase afetiva ou comércio, trate como Desconhecido e pergunte gentilmente como prefere ser chamado.\n` +
           `  • Se "Nome Registrado" for "Desconhecido" e o cliente informar o nome, acione \`save_client_name\` imediatamente.\n` +
           `  • Se houver documentos liberados acima relacionados à pergunta do cliente, consulte \`search_knowledge_base\` antes de responder.\n` +
-          `  • Se "Status Atual do Atendimento" for \`triagem_concluida\` ou \`converted\`:\n` +
-          `    - Se o cliente enviar apenas saudações ("Oi", "Olá", "Boa tarde", "Tudo bem?"), cumprimente-o de volta cordialmente pelo nome e pergunte com naturalidade como pode ajudá-lo agora, SEM repetir mensagens prontas de espera como "nossa equipe já foi alertada" ou "logo alguém vai falar com você".\n` +
-          `    - Se o cliente perguntar sobre produtos, preços, catálogo, serviços, dúvidas ou outro assunto, ATENDA-O NORMALMENTE com presteza e agilidade. NÃO o corte e NÃO repita que ele deve esperar.\n` +
-          `    - Apenas reforce que a equipe está ciente se o cliente expressamente cobrar o retorno ou perguntar sobre o atendente (ex: "e aí, ninguém vai falar comigo?", "cadê o atendente?").\n` +
+          `  • DIRETRIZ CRÍTICA DE DESCONGELAMENTO COGNITIVO (ATENDIMENTO HUMANO / RETORNO DO CLIENTE):\n` +
+          `    - INDEPENDENTE de o status estar como 'active', 'triagem_concluida', 'converted' ou de a Memória citar que o cliente pediu atendente humano no passado:\n` +
+          `    - NUNCA diga frases como "seu atendimento está pausado", "continuo por aqui aguardando a equipe", "já avisei os atendentes" ou "logo alguém fala com você", a menos que o cliente esteja ATIVAMENTE pedindo o atendente humano NESTA MENSAGEM ATUAL.\n` +
+          `    - Se a mensagem atual do cliente for uma saudação ("Oi", "Olá", "Boa tarde", "Tudo bem?"), agradecimento ("Valeu", "Ok") ou uma nova pergunta/dúvida sobre produtos, preços ou serviços:\n` +
+          `      1. CONVERSE NORMALMENTE E COM TOTAL AUTONOMIA: Responda diretamente ao que o cliente falou com presteza, acolhimento e agilidade.\n` +
+          `      2. NUNCA corte a conversa do cliente dizendo que ele tem que esperar.\n` +
+          `      3. NUNCA invente que o atendimento está travado ou pausado. Se você está enviando esta mensagem, você está ativa e pronta para atender!\n` +
+          `      4. SÓ volte a mencionar a equipe humana se o cliente expressamente cobrar o retorno ou perguntar pelo atendente (ex: "e aí, ninguém vai me atender?", "cadê o atendente?"). Caso contrário, prossiga a conversa com total naturalidade.\n` +
           `    - NÃO acione \`convert_lead\` novamente para o mesmo assunto já registrado.`
       );
       lines.push('</session_context>');
