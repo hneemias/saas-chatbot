@@ -553,7 +553,7 @@ export class RagService {
 
     const { data: existing, error: findErr } = await supabase
       .from('knowledge_base')
-      .select('id, doc_title, content, metadata')
+      .select('id, doc_title, content, visible_to_client, metadata')
       .eq('tenant_id', tenantId)
       .eq('id', id)
       .maybeSingle();
@@ -562,6 +562,45 @@ export class RagService {
       throw new Error('Execute sql/match_knowledge_base.sql no Supabase antes de editar documentos.');
     }
     if (!existing) return null;
+
+    const docGroupId = existing.metadata?.doc_group_id || null;
+    const clientId = existing.metadata?.client_id ?? null;
+
+    // Se o conteúdo foi alterado e o documento original era dividido em múltiplos chunks,
+    // a edição de texto completo deve reprocessar o documento (re-chunking) para manter a integridade do RAG
+    if (content !== undefined && docGroupId) {
+      const { data: siblings } = await supabase
+        .from('knowledge_base')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .contains('metadata', { doc_group_id: docGroupId });
+
+      if (siblings && siblings.length > 1) {
+        // Exclui os chunks antigos do grupo
+        await supabase
+          .from('knowledge_base')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .contains('metadata', { doc_group_id: docGroupId });
+
+        // Reingere com o novo conteúdo, mesmo doc_group_id, mantendo título e visibilidade
+        const reingested = await this.ingestDocument({
+          tenantId,
+          clientId,
+          content: content.trim(),
+          docTitle: docTitle !== undefined ? docTitle : existing.doc_title,
+          visibleToClient: visibleToClient !== undefined ? visibleToClient : existing.visible_to_client,
+          autoChunk: true,
+          metadata: {
+            ...(existing.metadata || {}),
+            ...(metadata || {}),
+            doc_group_id: docGroupId,
+          },
+        });
+
+        return (reingested.records[0] as Omit<KnowledgeBaseRecord, 'embedding'>) || null;
+      }
+    }
 
     const nextTitle = docTitle !== undefined ? docTitle : existing.doc_title;
     const nextContent = content !== undefined ? content.trim() : existing.content;

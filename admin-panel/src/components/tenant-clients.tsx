@@ -11,6 +11,7 @@ import {
     toggleKnowledgeDocumentVisibility,
     deleteKnowledgeDocument,
 } from "@/app/actions";
+import { reconstructFullDocumentText } from "@/lib/document-chunks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,24 +176,30 @@ export function TenantClients({
     }, [clients, search, statusFilter]);
 
     const groupedDrawerDocs = useMemo(() => {
-        const map = new Map<string, any>();
+        const map = new Map<string, { doc: any; chunks: any[] }>();
         for (const row of drawerDocs || []) {
             const groupId = row.metadata?.doc_group_id || row.id;
             if (!map.has(groupId)) {
                 map.set(groupId, {
-                    id: row.id,
-                    groupId,
-                    title: row.doc_title || row.metadata?.title || "Documento do Cliente",
-                    visibleToClient: Boolean(row.visible_to_client),
-                    updatedAt: row.updated_at || row.created_at,
-                    chunksCount: 1,
-                    preview: row.content || "",
+                    doc: {
+                        id: row.id,
+                        groupId,
+                        title: row.doc_title || row.metadata?.title || "Documento do Cliente",
+                        visibleToClient: Boolean(row.visible_to_client),
+                        updatedAt: row.updated_at || row.created_at,
+                    },
+                    chunks: [row],
                 });
             } else {
-                map.get(groupId)!.chunksCount += 1;
+                map.get(groupId)!.chunks.push(row);
             }
         }
-        return Array.from(map.values());
+
+        return Array.from(map.values()).map(({ doc, chunks }) => ({
+            ...doc,
+            chunksCount: chunks.length,
+            preview: reconstructFullDocumentText(chunks),
+        }));
     }, [drawerDocs]);
 
     const openClientDrawer = async (client: any, defaultTab: "dossier" | "chat" = "dossier") => {

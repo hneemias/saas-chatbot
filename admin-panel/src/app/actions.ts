@@ -27,11 +27,32 @@ function convertToKebabCase(text: string): string {
 
 function normalizeBrazilWhatsAppJid(rawPhone: string): string {
     const trimmed = (rawPhone || "").trim();
-    if (trimmed.includes("@")) return trimmed;
+    if (!trimmed) return "";
+    if (trimmed.includes("@")) {
+        const [user, domain] = trimmed.split("@");
+        const cleanUser = user.replace(/\D/g, "");
+        return cleanUser ? `${cleanUser}@${domain}` : trimmed;
+    }
+
+    // Remove qualquer caractere não numérico (parênteses, traços, espaços, +, etc.)
     let digits = trimmed.replace(/\D/g, "");
-    if (digits.length >= 10 && digits.length <= 11 && !digits.startsWith("55")) {
+
+    // Remove zero inicial de código de operadora/DDD (ex: "06499998888" -> "6499998888")
+    if (digits.startsWith("0")) {
+        digits = digits.replace(/^0+/, "");
+    }
+
+    // Se vier sem DDI 55 (10 dígitos: DDD + 8 dígitos, ou 11 dígitos: DDD + 9 + 8 dígitos)
+    if ((digits.length === 10 || digits.length === 11) && !digits.startsWith("55")) {
         digits = `55${digits}`;
     }
+
+    // Se for número brasileiro com 13 dígitos (55 + DDD 2 dígitos + 9 extra + 8 dígitos),
+    // remove o 9 extra para padronizar na base canônica de 12 dígitos do WhatsApp (ex: 5564996063283 -> 556496063283)
+    if (digits.startsWith("55") && digits.length === 13 && digits[4] === "9") {
+        digits = digits.slice(0, 4) + digits.slice(5);
+    }
+
     return `${digits}@s.whatsapp.net`;
 }
 
@@ -936,9 +957,11 @@ export async function createTeamMember(params: {
 
     const cleanName = (params.name || "").trim();
     const formattedJid = normalizeBrazilWhatsAppJid(params.phone);
+    const numericDigits = formattedJid.split("@")[0].replace(/\D/g, "");
 
-    if (!cleanName || formattedJid.length < 18) {
-        return { error: "Informe nome completo e telefone com DDD (ex: 11999998888)." };
+    // Deve ter pelo menos 12 dígitos (55 + DDD de 2 dígitos + 8 dígitos)
+    if (!cleanName || numericDigits.length < 12) {
+        return { error: "Informe o nome e um telefone válido com DDD (ex: (64) 99606-3283 ou 6496063283)." };
     }
 
     const { error } = await supabase.from("team_members").upsert(

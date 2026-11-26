@@ -113,7 +113,7 @@ export function TenantTeam({ tenantId, members }: TenantTeamProps) {
                         <Input
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            placeholder="Ex: 5511999998888"
+                            placeholder="(64) 99606-3283 ou 6496063283"
                             className="bg-white font-mono"
                             required
                         />
