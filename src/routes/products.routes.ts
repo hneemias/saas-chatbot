@@ -46,6 +46,8 @@ const bulkImportSchema = z.object({
     )
     .min(1)
     .max(10000),
+  deleteMissingSkus: z.boolean().optional().default(false),
+  missingSkusToDelete: z.array(z.string()).optional(),
 });
 
 productsRouter.post('/bulk-import', async (req: Request, res: Response): Promise<void> => {
@@ -58,7 +60,11 @@ productsRouter.post('/bulk-import', async (req: Request, res: Response): Promise
   try {
     const stats = await productService.bulkUpsertProducts(
       parsed.data.tenantId,
-      parsed.data.items
+      parsed.data.items,
+      {
+        deleteMissingSkus: parsed.data.deleteMissingSkus,
+        missingSkusToDelete: parsed.data.missingSkusToDelete,
+      }
     );
     res.json({ success: true, ...stats });
   } catch (err: any) {

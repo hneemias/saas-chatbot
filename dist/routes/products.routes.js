@@ -37,6 +37,8 @@ const bulkImportSchema = z.object({
     }))
         .min(1)
         .max(10000),
+    deleteMissingSkus: z.boolean().optional().default(false),
+    missingSkusToDelete: z.array(z.string()).optional(),
 });
 productsRouter.post('/bulk-import', async (req, res) => {
     const parsed = bulkImportSchema.safeParse(req.body);
@@ -45,7 +47,10 @@ productsRouter.post('/bulk-import', async (req, res) => {
         return;
     }
     try {
-        const stats = await productService.bulkUpsertProducts(parsed.data.tenantId, parsed.data.items);
+        const stats = await productService.bulkUpsertProducts(parsed.data.tenantId, parsed.data.items, {
+            deleteMissingSkus: parsed.data.deleteMissingSkus,
+            missingSkusToDelete: parsed.data.missingSkusToDelete,
+        });
         res.json({ success: true, ...stats });
     }
     catch (err) {

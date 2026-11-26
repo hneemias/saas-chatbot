@@ -270,8 +270,17 @@ export class ProductService {
    */
   async bulkUpsertProducts(
     tenantId: string,
-    rows: BulkUpsertInput[]
-  ): Promise<{ totalProcessed: number; newProducts: number; updatedProducts: number }> {
+    rows: BulkUpsertInput[],
+    options?: {
+      deleteMissingSkus?: boolean;
+      missingSkusToDelete?: string[];
+    }
+  ): Promise<{
+    totalProcessed: number;
+    newProducts: number;
+    updatedProducts: number;
+    deletedProducts?: number;
+  }> {
     const dedupBySku = new Map<string, BulkUpsertInput>();
     for (const r of rows || []) {
       const sku = String(r.sku || '').trim();
@@ -368,6 +377,27 @@ export class ProductService {
       }
     }
 
+    // Se o usuário solicitou remover os produtos ausentes da planilha para este tenant
+    let deletedCount = 0;
+    if (options?.deleteMissingSkus && options?.missingSkusToDelete && options.missingSkusToDelete.length > 0) {
+      for (let i = 0; i < options.missingSkusToDelete.length; i += 400) {
+        const batch = options.missingSkusToDelete.slice(i, i + 400);
+        const { data: delData, error: delErr } = await supabase
+          .from('products')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .in('sku', batch)
+          .select('sku');
+
+        if (delErr) {
+          logger.error({ err: delErr.message, tenantId }, 'Erro ao excluir produtos ausentes da planilha');
+        } else if (delData) {
+          deletedCount += delData.length;
+        }
+      }
+      logger.info({ tenantId, deletedCount }, 'Produtos ausentes excluídos após importação de planilha');
+    }
+
     // Gera vetores semânticos em segundo plano apenas para itens novos/renomeados (sem travar a importação!)
     if (skusNeedingEmbedding.length > 0) {
       void this.ensureEmbeddingsInBackground(tenantId, skusNeedingEmbedding.slice(0, 80)).catch(
@@ -379,6 +409,7 @@ export class ProductService {
       totalProcessed: payloads.length,
       newProducts,
       updatedProducts,
+      deletedProducts: deletedCount,
     };
   }
 

@@ -4,6 +4,7 @@ import { useState, useTransition, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
 import {
     bulkImportTenantProducts,
+    checkMissingCatalogProducts,
     upsertSingleTenantProduct,
     deleteTenantProduct,
     uploadProductPhotoAction,
@@ -133,6 +134,11 @@ export function TenantCatalog({
     const [price, setPrice] = useState("");
     const [stock, setStock] = useState("1");
 
+    // Controle do Modal de Produtos Ausentes na Importação de Planilha
+    const [pendingImportItems, setPendingImportItems] = useState<any[] | null>(null);
+    const [missingSkus, setMissingSkus] = useState<string[]>([]);
+    const [showMissingModal, setShowMissingModal] = useState(false);
+
     const stats = useMemo(() => {
         const list = initialProducts || [];
         const inStock = list.filter((p) => Number(p.stock_quantity) > 0).length;
@@ -174,6 +180,32 @@ export function TenantCatalog({
         return filtered.slice(start, start + PAGE_SIZE);
     }, [filtered, safePage]);
 
+    const executeImport = (items: any[], deleteMissing: boolean, skusToDelete: string[]) => {
+        startTransition(async () => {
+            const res = await bulkImportTenantProducts({
+                tenantId,
+                items,
+                deleteMissingSkus: deleteMissing,
+                missingSkusToDelete: skusToDelete,
+            });
+            setShowMissingModal(false);
+            setPendingImportItems(null);
+            setMissingSkus([]);
+
+            if ((res as any)?.error) {
+                toast.error((res as any).error);
+            } else {
+                const deletedMsg = (res as any).deletedProducts
+                    ? `, ${(res as any).deletedProducts} removidos`
+                    : "";
+                toast.success(
+                    `${(res as any).totalProcessed} produtos sincronizados (${(res as any).newProducts} novos, ${(res as any).updatedProducts} atualizados${deletedMsg})!`
+                );
+                router.refresh();
+            }
+        });
+    };
+
     const handleSpreadsheetSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         e.target.value = "";
@@ -196,20 +228,22 @@ export function TenantCatalog({
                 return;
             }
 
-            startTransition(async () => {
-                const res = await bulkImportTenantProducts({
-                    tenantId,
-                    items: mapped,
-                });
-                if ((res as any)?.error) {
-                    toast.error((res as any).error);
-                } else {
-                    toast.success(
-                        `${(res as any).totalProcessed} produtos sincronizados (${(res as any).newProducts} novos, ${(res as any).updatedProducts} atualizados)!`
-                    );
-                    router.refresh();
-                }
+            // Verifica se há produtos cadastrados anteriormente que não constam na nova planilha
+            const incomingSkus = mapped.map((m) => m.sku);
+            const checkRes = await checkMissingCatalogProducts({
+                tenantId,
+                incomingSkus,
             });
+
+            if (checkRes.missingCount && checkRes.missingCount > 0) {
+                setPendingImportItems(mapped);
+                setMissingSkus(checkRes.missingSkus || []);
+                setShowMissingModal(true);
+                return;
+            }
+
+            // Se não há ausentes, importa direto
+            executeImport(mapped, false, []);
         } catch {
             toast.error("Não foi possível ler o arquivo selecionado.");
         }
@@ -726,6 +760,83 @@ export function TenantCatalog({
                     </div>
                 )}
             </div>
+
+            {/* Modal de Confirmação: Produtos Removidos da Nova Planilha */}
+            {showMissingModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95">
+                        <div className="flex items-start gap-4">
+                            <div className="size-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
+                                <AlertTriangle className="size-6" />
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-base font-bold text-slate-900">
+                                    Produtos Ausentes na Planilha
+                                </h3>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    Identificamos que <strong className="text-slate-900 font-semibold">{missingSkus.length} produto(s)</strong> cadastrados anteriormente não constam neste novo arquivo.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 space-y-1.5 text-xs text-slate-600">
+                            <p className="font-semibold text-slate-800">
+                                O que você deseja fazer com os produtos que saíram da planilha?
+                            </p>
+                            <p className="text-[11px] text-slate-500">
+                                • <strong>Excluir:</strong> remove os {missingSkus.length} itens ausentes do catálogo.<br />
+                                • <strong>Manter:</strong> preserva os itens antigos no sistema e apenas atualiza os que estão na planilha.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-1">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isPending}
+                                onClick={() => {
+                                    setShowMissingModal(false);
+                                    setPendingImportItems(null);
+                                    setMissingSkus([]);
+                                }}
+                                className="w-full sm:w-auto text-xs"
+                            >
+                                Cancelar Importação
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={isPending}
+                                onClick={() => {
+                                    if (pendingImportItems) {
+                                        executeImport(pendingImportItems, false, []);
+                                    }
+                                }}
+                                className="w-full sm:w-auto text-xs font-semibold"
+                            >
+                                Manter Anteriores
+                            </Button>
+                            <Button
+                                type="button"
+                                disabled={isPending}
+                                onClick={() => {
+                                    if (pendingImportItems) {
+                                        executeImport(pendingImportItems, true, missingSkus);
+                                    }
+                                }}
+                                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
+                            >
+                                {isPending ? (
+                                    <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                                ) : (
+                                    <Trash2 className="mr-1.5 size-3.5" />
+                                )}
+                                Excluir {missingSkus.length} Produtos
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

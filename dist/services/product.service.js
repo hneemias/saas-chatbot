@@ -216,7 +216,7 @@ export class ProductService {
      * - Atualiza preço e estoque instantaneamente;
      * - Preserva `image_urls`, `category` e `embedding` existentes caso o produto já esteja cadastrado!
      */
-    async bulkUpsertProducts(tenantId, rows) {
+    async bulkUpsertProducts(tenantId, rows, options) {
         const dedupBySku = new Map();
         for (const r of rows || []) {
             const sku = String(r.sku || '').trim();
@@ -302,6 +302,26 @@ export class ProductService {
                 throw new Error(`Falha ao salvar produtos no banco: ${error.message}`);
             }
         }
+        // Se o usuário solicitou remover os produtos ausentes da planilha para este tenant
+        let deletedCount = 0;
+        if (options?.deleteMissingSkus && options?.missingSkusToDelete && options.missingSkusToDelete.length > 0) {
+            for (let i = 0; i < options.missingSkusToDelete.length; i += 400) {
+                const batch = options.missingSkusToDelete.slice(i, i + 400);
+                const { data: delData, error: delErr } = await supabase
+                    .from('products')
+                    .delete()
+                    .eq('tenant_id', tenantId)
+                    .in('sku', batch)
+                    .select('sku');
+                if (delErr) {
+                    logger.error({ err: delErr.message, tenantId }, 'Erro ao excluir produtos ausentes da planilha');
+                }
+                else if (delData) {
+                    deletedCount += delData.length;
+                }
+            }
+            logger.info({ tenantId, deletedCount }, 'Produtos ausentes excluídos após importação de planilha');
+        }
         // Gera vetores semânticos em segundo plano apenas para itens novos/renomeados (sem travar a importação!)
         if (skusNeedingEmbedding.length > 0) {
             void this.ensureEmbeddingsInBackground(tenantId, skusNeedingEmbedding.slice(0, 80)).catch((err) => logger.debug({ err: err?.message }, 'Indexação vetorial em segundo plano ignorada'));
@@ -310,6 +330,7 @@ export class ProductService {
             totalProcessed: payloads.length,
             newProducts,
             updatedProducts,
+            deletedProducts: deletedCount,
         };
     }
     async ensureEmbeddingsInBackground(tenantId, skus) {

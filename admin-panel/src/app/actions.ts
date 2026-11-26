@@ -1096,6 +1096,41 @@ export async function getTenantProducts(params: {
     return { data: items, tableMissing: false };
 }
 
+export async function checkMissingCatalogProducts(payload: {
+    tenantId: string;
+    incomingSkus: string[];
+}) {
+    await requireAdminSession();
+    const supabase = createAdminClient();
+
+    const incomingSet = new Set(payload.incomingSkus.map((s) => String(s || "").trim()).filter(Boolean));
+    if (incomingSet.size === 0) return { missingCount: 0, missingSkus: [] };
+
+    const existingSkus: string[] = [];
+    let from = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from("products")
+            .select("sku")
+            .eq("tenant_id", payload.tenantId)
+            .range(from, from + 999);
+
+        if (error) return { error: error.message };
+        if (!data || data.length === 0) break;
+        for (const row of data) {
+            if (row.sku) existingSkus.push(row.sku);
+        }
+        if (data.length < 1000) break;
+        from += 1000;
+    }
+
+    const missing = existingSkus.filter((sku) => !incomingSet.has(sku));
+    return {
+        missingCount: missing.length,
+        missingSkus: missing,
+    };
+}
+
 export async function bulkImportTenantProducts(payload: {
     tenantId: string;
     items: Array<{
@@ -1106,6 +1141,8 @@ export async function bulkImportTenantProducts(payload: {
         price: number;
         stock_quantity: number;
     }>;
+    deleteMissingSkus?: boolean;
+    missingSkusToDelete?: string[];
 }) {
     await requireAdminSession();
     const supabase = createAdminClient();
@@ -1116,6 +1153,7 @@ export async function bulkImportTenantProducts(payload: {
         totalProcessed: number;
         newProducts: number;
         updatedProducts: number;
+        deletedProducts?: number;
     }>("/api/products/bulk-import", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -1201,12 +1239,31 @@ export async function bulkImportTenantProducts(payload: {
         if (upErr) return { error: upErr.message };
     }
 
+    // Se o usuário optou por excluir os produtos ausentes da planilha
+    let deletedCount = 0;
+    if (payload.deleteMissingSkus && payload.missingSkusToDelete && payload.missingSkusToDelete.length > 0) {
+        for (let i = 0; i < payload.missingSkusToDelete.length; i += 400) {
+            const batch = payload.missingSkusToDelete.slice(i, i + 400);
+            const { data: delData, error: delErr } = await supabase
+                .from("products")
+                .delete()
+                .eq("tenant_id", payload.tenantId)
+                .in("sku", batch)
+                .select("sku");
+
+            if (!delErr && delData) {
+                deletedCount += delData.length;
+            }
+        }
+    }
+
     revalidatePath(`/tenants/${payload.tenantId}`);
     return {
         success: true,
         totalProcessed: rowsToUpsert.length,
         newProducts,
         updatedProducts,
+        deletedProducts: deletedCount,
     };
 }
 
