@@ -764,75 +764,91 @@ export function TenantCatalog({
             {/* Modal de Confirmação: Produtos Removidos da Nova Planilha */}
             {showMissingModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95">
-                        <div className="flex items-start gap-4">
-                            <div className="size-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
-                                <AlertTriangle className="size-6" />
+                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                                <div className="size-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
+                                    <AlertTriangle className="size-6" />
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-base font-bold text-slate-900">
+                                        Produtos Ausentes na Planilha
+                                    </h3>
+                                    <p className="text-xs text-slate-500 leading-relaxed">
+                                        Identificamos que <strong className="text-slate-900 font-semibold">{missingSkus.length} produto(s)</strong> cadastrados anteriormente não constam neste novo arquivo.
+                                    </p>
+                                </div>
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-base font-bold text-slate-900">
-                                    Produtos Ausentes na Planilha
-                                </h3>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    Identificamos que <strong className="text-slate-900 font-semibold">{missingSkus.length} produto(s)</strong> cadastrados anteriormente não constam neste novo arquivo.
-                                </p>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowMissingModal(false);
+                                    setPendingImportItems(null);
+                                    setMissingSkus([]);
+                                }}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
+                                <X className="size-4" />
+                            </button>
                         </div>
 
                         <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 space-y-1.5 text-xs text-slate-600">
                             <p className="font-semibold text-slate-800">
                                 O que você deseja fazer com os produtos que saíram da planilha?
                             </p>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[11px] text-slate-500 leading-relaxed">
                                 • <strong>Excluir:</strong> remove os {missingSkus.length} itens ausentes do catálogo.<br />
                                 • <strong>Manter:</strong> preserva os itens antigos no sistema e apenas atualiza os que estão na planilha.
                             </p>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-1">
+                        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
                             <Button
                                 type="button"
-                                variant="outline"
+                                variant="ghost"
                                 disabled={isPending}
                                 onClick={() => {
                                     setShowMissingModal(false);
                                     setPendingImportItems(null);
                                     setMissingSkus([]);
                                 }}
-                                className="w-full sm:w-auto text-xs"
+                                className="text-xs text-slate-500 hover:text-slate-800"
                             >
-                                Cancelar Importação
+                                Cancelar
                             </Button>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                disabled={isPending}
-                                onClick={() => {
-                                    if (pendingImportItems) {
-                                        executeImport(pendingImportItems, false, []);
-                                    }
-                                }}
-                                className="w-full sm:w-auto text-xs font-semibold"
-                            >
-                                Manter Anteriores
-                            </Button>
-                            <Button
-                                type="button"
-                                disabled={isPending}
-                                onClick={() => {
-                                    if (pendingImportItems) {
-                                        executeImport(pendingImportItems, true, missingSkus);
-                                    }
-                                }}
-                                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
-                            >
-                                {isPending ? (
-                                    <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                                ) : (
-                                    <Trash2 className="mr-1.5 size-3.5" />
-                                )}
-                                Excluir {missingSkus.length} Produtos
-                            </Button>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={isPending}
+                                    onClick={() => {
+                                        if (pendingImportItems) {
+                                            executeImport(pendingImportItems, false, []);
+                                        }
+                                    }}
+                                    className="text-xs font-semibold"
+                                >
+                                    Manter Anteriores
+                                </Button>
+                                <Button
+                                    type="button"
+                                    disabled={isPending}
+                                    onClick={() => {
+                                        if (pendingImportItems) {
+                                            executeImport(pendingImportItems, true, missingSkus);
+                                        }
+                                    }}
+                                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
+                                >
+                                    {isPending ? (
+                                        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                                    ) : (
+                                        <Trash2 className="mr-1.5 size-3.5" />
+                                    )}
+                                    Excluir {missingSkus.length} Produtos
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
