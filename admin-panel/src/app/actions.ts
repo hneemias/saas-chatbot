@@ -1505,7 +1505,7 @@ async function fetchTenantConversationCards(
 ) {
     const { data: recentMsgs } = await supabase
         .from("messages")
-        .select("id, tenant_id, client_id, phone, role, content, created_at, clients(id, name, status, tenant_id)")
+        .select("id, tenant_id, client_id, phone, role, content, message_type, created_at, clients(id, name, status, tenant_id)")
         .eq("tenant_id", tenantId)
         .order("created_at", { ascending: false })
         .limit(messageLimit);
@@ -1542,6 +1542,7 @@ async function fetchTenantConversationCards(
                     {
                         id: msg.id,
                         role: msg.role,
+                        message_type: msg.message_type,
                         content: msg.content || "",
                     },
                 ],
@@ -1563,10 +1564,14 @@ async function fetchTenantConversationCards(
 
             if (conv.turns.length < 2) {
                 const newestTurn = conv.turns[0];
-                if (msg.role !== newestTurn.role) {
+                const msgIsIncoming = msg.role === "user";
+                const newestIsIncoming = newestTurn.role === "user";
+
+                if (msgIsIncoming !== newestIsIncoming) {
                     conv.turns.unshift({
                         id: msg.id,
                         role: msg.role,
+                        message_type: msg.message_type,
                         content: msg.content || "",
                     });
                 }

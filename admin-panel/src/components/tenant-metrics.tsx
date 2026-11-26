@@ -250,8 +250,8 @@ export function TenantMetrics({ metrics }: TenantMetricsProps) {
 
                                         <div className="space-y-1 rounded-xl bg-zinc-50/80 border border-zinc-100 px-3 py-2">
                                             {(conv.turns || []).map((turn: any, idx: number) => {
-                                                const isAI = turn.role === "assistant";
-                                                const isTeam = turn.role === "admin";
+                                                const isTeam = turn.role === "admin" || turn.message_type === "admin";
+                                                const isAI = turn.role === "assistant" && !isTeam;
                                                 return (
                                                     <p
                                                         key={turn.id || idx}
@@ -267,9 +267,9 @@ export function TenantMetrics({ metrics }: TenantMetricsProps) {
                                                             }`}
                                                         >
                                                             {isAI
-                                                                ? "Assistente:"
+                                                                ? "Assistente IA:"
                                                                 : isTeam
-                                                                  ? "Equipe:"
+                                                                  ? "Atendente Humano:"
                                                                   : "Cliente:"}
                                                         </span>
                                                         {turn.content}
