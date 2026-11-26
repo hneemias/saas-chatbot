@@ -114,7 +114,7 @@ export function WhatsAppConnection({ instanceName, apiKey }: WhatsAppConnectionP
                 toast.error((res as any).error);
             } else {
                 setCurrentWebhookUrl(webhookUrl.trim());
-                toast.success("Webhook MESSAGES_UPSERT configurado na Evolution API!");
+                toast.success("Webhook configurado com sucesso (MESSAGES_UPSERT e SEND_MESSAGE)!");
             }
         } finally {
             setSavingWebhook(false);
